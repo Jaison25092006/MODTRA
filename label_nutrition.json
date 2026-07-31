@@ -1,0 +1,952 @@
+{
+  "adhirasam": {
+    "name": "adhirasam",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "aloo_gobi": {
+    "name": "Gobi 65",
+    "status": "unavailable",
+    "serving": "plate",
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "aloo_matar": {
+    "name": "Pea potato curry (Aloo matar)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 280.0,
+    "protein_g": 9.7,
+    "fat_g": 14.2,
+    "fibre_g": 10.0,
+    "carb_g": 27.0
+  },
+  "aloo_methi": {
+    "name": "Potato fenugreek (Aloo methi)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 276.0,
+    "protein_g": 4.6,
+    "fat_g": 20.5,
+    "fibre_g": 6.0,
+    "carb_g": 17.3
+  },
+  "aloo_shimla_mirch": {
+    "name": "Potato capsicum (Shimla mirch aloo)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 189.0,
+    "protein_g": 2.1,
+    "fat_g": 14.1,
+    "fibre_g": 3.1,
+    "carb_g": 13.1
+  },
+  "aloo_tikki": {
+    "name": "Aloo Tikki (manual estimate)",
+    "status": "manual",
+    "serving": "1 piece",
+    "kcal": 150.0,
+    "protein_g": 3.0,
+    "fat_g": 7.0,
+    "fibre_g": 2.0,
+    "carb_g": 19.0
+  },
+  "anarsa": {
+    "name": "anarsa",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "ariselu": {
+    "name": "ariselu",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "bandar_laddu": {
+    "name": "bandar_laddu",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "basundi": {
+    "name": "basundi",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "besan_cheela": {
+    "name": "Besan bathua chilla/cheela",
+    "status": "available",
+    "serving": "cheela",
+    "kcal": 113.0,
+    "protein_g": 3.5,
+    "fat_g": 5.6,
+    "fibre_g": 2.3,
+    "carb_g": 12.2
+  },
+  "bhatura": {
+    "name": "Bhatura",
+    "status": "unavailable",
+    "serving": "bhatura",
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "bhindi_masala": {
+    "name": "Masala arbi",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 215.0,
+    "protein_g": 3.5,
+    "fat_g": 13.8,
+    "fibre_g": 3.6,
+    "carb_g": 18.8
+  },
+  "biryani": {
+    "name": "Mutton biryani/biriyani",
+    "status": "available",
+    "serving": "plate",
+    "kcal": 396.0,
+    "protein_g": 15.3,
+    "fat_g": 16.1,
+    "fibre_g": 5.0,
+    "carb_g": 46.7
+  },
+  "boondi": {
+    "name": "Boondi (manual estimate)",
+    "status": "manual",
+    "serving": "small bowl",
+    "kcal": 180.0,
+    "protein_g": 4.0,
+    "fat_g": 12.0,
+    "fibre_g": 1.0,
+    "carb_g": 14.0
+  },
+  "butter_chicken": {
+    "name": "Butter chicken",
+    "status": "available",
+    "serving": "large piece",
+    "kcal": 377.0,
+    "protein_g": 30.1,
+    "fat_g": 23.9,
+    "fibre_g": 3.6,
+    "carb_g": 10.3
+  },
+  "chak_hao_kheer": {
+    "name": "Black rice kheer (Chak-hao kheer)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 307.0,
+    "protein_g": 9.1,
+    "fat_g": 10.2,
+    "fibre_g": 1.6,
+    "carb_g": 47.6
+  },
+  "cham_cham": {
+    "name": "Chum chum",
+    "status": "available",
+    "serving": "piece",
+    "kcal": 405.0,
+    "protein_g": 4.7,
+    "fat_g": 6.0,
+    "fibre_g": 0.0,
+    "carb_g": 88.1
+  },
+  "chana_masala": {
+    "name": "Chat masala",
+    "status": "estimated",
+    "serving": null,
+    "kcal": 334.0,
+    "protein_g": 12.3,
+    "fat_g": 14.9,
+    "fibre_g": 27.9,
+    "carb_g": 35.8
+  },
+  "chapati": {
+    "name": "Chapati/Roti",
+    "status": "available",
+    "serving": "chapati",
+    "kcal": 73.0,
+    "protein_g": 2.1,
+    "fat_g": 1.3,
+    "fibre_g": 2.3,
+    "carb_g": 12.8
+  },
+  "chhena_kheeri": {
+    "name": "Chhena poda",
+    "status": "available",
+    "serving": "slice",
+    "kcal": 256.0,
+    "protein_g": 10.2,
+    "fat_g": 13.3,
+    "fibre_g": 1.0,
+    "carb_g": 25.0
+  },
+  "chicken_razala": {
+    "name": "Chicken curry",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 320.0,
+    "protein_g": 29.2,
+    "fat_g": 18.8,
+    "fibre_g": 3.5,
+    "carb_g": 8.4
+  },
+  "chicken_tikka": {
+    "name": "Chicken stock",
+    "status": "available",
+    "serving": "cup",
+    "kcal": 112.0,
+    "protein_g": 13.9,
+    "fat_g": 5.7,
+    "fibre_g": 0.4,
+    "carb_g": 1.4
+  },
+  "chicken_tikka_masala": {
+    "name": "Shahi chicken masala",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 572.0,
+    "protein_g": 34.3,
+    "fat_g": 42.0,
+    "fibre_g": 3.4,
+    "carb_g": 14.2
+  },
+  "chikki": {
+    "name": "Murmura chikki",
+    "status": "available",
+    "serving": "piece",
+    "kcal": 67.0,
+    "protein_g": 0.6,
+    "fat_g": 0.1,
+    "fibre_g": 0.1,
+    "carb_g": 15.6
+  },
+  "chole_bature": {
+    "name": "chole_bature",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "daal_baati_churma": {
+    "name": "daal_baati_churma",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "daal_puri": {
+    "name": "Bhel puri ",
+    "status": "unavailable",
+    "serving": "plate",
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "dabeli": {
+    "name": "dabeli",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "dal": {
+    "name": "Mixed dal",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 184.0,
+    "protein_g": 7.5,
+    "fat_g": 9.2,
+    "fibre_g": 4.8,
+    "carb_g": 17.3
+  },
+  "dal_makhani": {
+    "name": "Dal makhani",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 262.0,
+    "protein_g": 11.7,
+    "fat_g": 10.8,
+    "fibre_g": 8.0,
+    "carb_g": 28.1
+  },
+  "dal_tadka": {
+    "name": "Green gram whole with baghar (Sabut moong dal with tadka)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 143.0,
+    "protein_g": 7.3,
+    "fat_g": 5.6,
+    "fibre_g": 6.8,
+    "carb_g": 15.3
+  },
+  "dharwad_pedha": {
+    "name": "dharwad_pedha",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "dhokla": {
+    "name": "Dhokla",
+    "status": "available",
+    "serving": "piece",
+    "kcal": 87.0,
+    "protein_g": 5.4,
+    "fat_g": 2.1,
+    "fibre_g": 2.0,
+    "carb_g": 12.3
+  },
+  "doodhpak": {
+    "name": "doodhpak",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "dosa": {
+    "name": "Plain dosa",
+    "status": "available",
+    "serving": "dosa",
+    "kcal": 138.0,
+    "protein_g": 3.7,
+    "fat_g": 3.0,
+    "fibre_g": 1.9,
+    "carb_g": 23.1
+  },
+  "double_ka_meetha": {
+    "name": "Sweet lemon pickle (Neembu ka meetha achaar)",
+    "status": "estimated",
+    "serving": null,
+    "kcal": 104.0,
+    "protein_g": 1.8,
+    "fat_g": 0.3,
+    "fibre_g": 3.2,
+    "carb_g": 25.3
+  },
+  "dum_aloo": {
+    "name": "Dum aloo",
+    "status": "unavailable",
+    "serving": "bowl",
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "gajar_ka_halwa": {
+    "name": "Carrot halwa (Gajar ka halwa)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 290.0,
+    "protein_g": 5.2,
+    "fat_g": 16.3,
+    "fibre_g": 4.5,
+    "carb_g": 31.1
+  },
+  "gavvalu": {
+    "name": "gavvalu",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "ghevar": {
+    "name": "ghevar",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "gulab_jamun": {
+    "name": "Gulab Jamun (manual estimate)",
+    "status": "manual",
+    "serving": "1 piece",
+    "kcal": 150.0,
+    "protein_g": 2.0,
+    "fat_g": 6.0,
+    "fibre_g": 0.0,
+    "carb_g": 22.0
+  },
+  "idli": {
+    "name": "Idli",
+    "status": "available",
+    "serving": "idli",
+    "kcal": 34.0,
+    "protein_g": 1.2,
+    "fat_g": 0.1,
+    "fibre_g": 0.6,
+    "carb_g": 7.1
+  },
+  "imarti": {
+    "name": "imarti",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "jalebi": {
+    "name": "Jalebi (manual estimate)",
+    "status": "manual",
+    "serving": "1 piece",
+    "kcal": 150.0,
+    "protein_g": 1.0,
+    "fat_g": 6.0,
+    "fibre_g": 0.0,
+    "carb_g": 24.0
+  },
+  "kachori": {
+    "name": "Khasta kachori",
+    "status": "unavailable",
+    "serving": "kachori",
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "kadai_paneer": {
+    "name": "Kadhai Paneer",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 344.0,
+    "protein_g": 13.8,
+    "fat_g": 21.7,
+    "fibre_g": 6.6,
+    "carb_g": 23.4
+  },
+  "kadhi_pakoda": {
+    "name": "Besan kadhi with pakodies",
+    "status": "unavailable",
+    "serving": "bowl",
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "kajjikaya": {
+    "name": "kajjikaya",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "kakinada_khaja": {
+    "name": "kakinada_khaja",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "kalakand": {
+    "name": "kalakand",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "karela_bharta": {
+    "name": "Stuffed bittergourd (dry) (Bharwa karela)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 231.0,
+    "protein_g": 1.4,
+    "fat_g": 23.7,
+    "fibre_g": 3.2,
+    "carb_g": 2.6
+  },
+  "kathiroll": {
+    "name": "kathiroll",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "kofta": {
+    "name": "Gravy for kofta",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 175.0,
+    "protein_g": 2.4,
+    "fat_g": 14.4,
+    "fibre_g": 2.7,
+    "carb_g": 8.8
+  },
+  "kuzhi_paniyaram": {
+    "name": "kuzhi_paniyaram",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "lassi": {
+    "name": "Lassi (salted)",
+    "status": "available",
+    "serving": "tall glass",
+    "kcal": 80.0,
+    "protein_g": 5.7,
+    "fat_g": 3.0,
+    "fibre_g": 0.1,
+    "carb_g": 7.9
+  },
+  "ledikeni": {
+    "name": "ledikeni",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "litti_chokha": {
+    "name": "litti_chokha",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "lyangcha": {
+    "name": "lyangcha",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "maach_jhol": {
+    "name": "maach_jhol",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "makki_di_roti_sarson_da_saag": {
+    "name": "Makki ki roti",
+    "status": "available",
+    "serving": "roti",
+    "kcal": 224.0,
+    "protein_g": 3.0,
+    "fat_g": 14.3,
+    "fibre_g": 4.4,
+    "carb_g": 20.6
+  },
+  "malapua": {
+    "name": "Mal pua",
+    "status": "unavailable",
+    "serving": "malqura",
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "misi_roti": {
+    "name": "Makki ki roti",
+    "status": "available",
+    "serving": "roti",
+    "kcal": 224.0,
+    "protein_g": 3.0,
+    "fat_g": 14.3,
+    "fibre_g": 4.4,
+    "carb_g": 20.6
+  },
+  "misti_doi": {
+    "name": "misti_doi",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "modak": {
+    "name": "modak",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "mysore_pak": {
+    "name": "mysore_pak",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "naan": {
+    "name": "Naan",
+    "status": "available",
+    "serving": "naan",
+    "kcal": 152.0,
+    "protein_g": 4.3,
+    "fat_g": 2.7,
+    "fibre_g": 1.0,
+    "carb_g": 27.5
+  },
+  "navrattan_korma": {
+    "name": "Mutton korma",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 424.0,
+    "protein_g": 26.0,
+    "fat_g": 31.3,
+    "fibre_g": 2.9,
+    "carb_g": 9.3
+  },
+  "pakora": {
+    "name": "Bread pakora/pakoda",
+    "status": "unavailable",
+    "serving": "plate",
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "palak_paneer": {
+    "name": "Spinach paneer (Palak paneer)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 230.0,
+    "protein_g": 11.9,
+    "fat_g": 14.1,
+    "fibre_g": 5.6,
+    "carb_g": 13.1
+  },
+  "paneer": {
+    "name": "Paneer curry",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 357.0,
+    "protein_g": 15.8,
+    "fat_g": 25.1,
+    "fibre_g": 2.8,
+    "carb_g": 17.0
+  },
+  "paneer_butter_masala": {
+    "name": "Paneer in butter sauce",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 228.0,
+    "protein_g": 11.0,
+    "fat_g": 13.8,
+    "fibre_g": 2.3,
+    "carb_g": 15.2
+  },
+  "panipuri": {
+    "name": "panipuri",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "pav_bhaji": {
+    "name": "Pav bhaji",
+    "status": "available",
+    "serving": null,
+    "kcal": 561.0,
+    "protein_g": 15.5,
+    "fat_g": 25.1,
+    "fibre_g": 11.5,
+    "carb_g": 69.7
+  },
+  "phirni": {
+    "name": "Phirni",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 337.0,
+    "protein_g": 10.1,
+    "fat_g": 12.6,
+    "fibre_g": 1.0,
+    "carb_g": 46.7
+  },
+  "pithe": {
+    "name": "pithe",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "poha": {
+    "name": "Poha",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 161.0,
+    "protein_g": 3.3,
+    "fat_g": 7.7,
+    "fibre_g": 2.0,
+    "carb_g": 19.1
+  },
+  "poornalu": {
+    "name": "poornalu",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "pootharekulu": {
+    "name": "Putharekulu",
+    "status": "available",
+    "serving": "roll",
+    "kcal": 170.0,
+    "protein_g": 2.0,
+    "fat_g": 4.0,
+    "fibre_g": 0.9,
+    "carb_g": 31.9
+  },
+  "qubani_ka_meetha": {
+    "name": "Sweet lemon pickle (Neembu ka meetha achaar)",
+    "status": "estimated",
+    "serving": null,
+    "kcal": 104.0,
+    "protein_g": 1.8,
+    "fat_g": 0.3,
+    "fibre_g": 3.2,
+    "carb_g": 25.3
+  },
+  "rabri": {
+    "name": "Thickened sweetened milk (Rabri)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 226.0,
+    "protein_g": 7.7,
+    "fat_g": 11.8,
+    "fibre_g": 0.4,
+    "carb_g": 23.2
+  },
+  "ras_malai": {
+    "name": "Methi malai paneer",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 377.0,
+    "protein_g": 14.2,
+    "fat_g": 28.5,
+    "fibre_g": 2.8,
+    "carb_g": 15.8
+  },
+  "rasgulla": {
+    "name": "Rasgulla",
+    "status": "available",
+    "serving": "piece",
+    "kcal": 405.0,
+    "protein_g": 4.7,
+    "fat_g": 6.0,
+    "fibre_g": 0.0,
+    "carb_g": 88.1
+  },
+  "rolls": {
+    "name": "Cabbage rolls (dry) ((Pattagobhi rolls) (dry))",
+    "status": "available",
+    "serving": "roll",
+    "kcal": 118.0,
+    "protein_g": 6.8,
+    "fat_g": 7.8,
+    "fibre_g": 1.5,
+    "carb_g": 5.1
+  },
+  "samosa": {
+    "name": "Vegetable samosa",
+    "status": "available",
+    "serving": "samosa",
+    "kcal": 447.0,
+    "protein_g": 2.2,
+    "fat_g": 42.6,
+    "fibre_g": 1.5,
+    "carb_g": 13.3
+  },
+  "sandesh": {
+    "name": "sandesh",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "shankarpali": {
+    "name": "shankarpali",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "sheer_korma": {
+    "name": "Chicken korma",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 513.0,
+    "protein_g": 34.1,
+    "fat_g": 33.6,
+    "fibre_g": 6.3,
+    "carb_g": 18.8
+  },
+  "sheera": {
+    "name": "sheera",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "shrikhand": {
+    "name": "Sweetened yogurt (Shrikhand)",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 327.0,
+    "protein_g": 16.1,
+    "fat_g": 8.8,
+    "fibre_g": 0.2,
+    "carb_g": 48.8
+  },
+  "sohan_halwa": {
+    "name": "Shahi suji halwa",
+    "status": "available",
+    "serving": "bowl",
+    "kcal": 376.0,
+    "protein_g": 3.4,
+    "fat_g": 21.4,
+    "fibre_g": 2.9,
+    "carb_g": 43.7
+  },
+  "sohan_papdi": {
+    "name": "Sohan Papdi (manual estimate)",
+    "status": "manual",
+    "serving": "1 piece",
+    "kcal": 130.0,
+    "protein_g": 1.0,
+    "fat_g": 6.0,
+    "fibre_g": 0.0,
+    "carb_g": 19.0
+  },
+  "sutar_feni": {
+    "name": "sutar_feni",
+    "status": "unavailable",
+    "serving": null,
+    "kcal": null,
+    "protein_g": null,
+    "fat_g": null,
+    "fibre_g": null,
+    "carb_g": null
+  },
+  "unni_appam": {
+    "name": "Appam",
+    "status": "available",
+    "serving": "appam",
+    "kcal": 409.0,
+    "protein_g": 4.8,
+    "fat_g": 34.6,
+    "fibre_g": 9.5,
+    "carb_g": 20.3
+  },
+  "vada_pav": {
+    "name": "Pav bhaji",
+    "status": "available",
+    "serving": null,
+    "kcal": 561.0,
+    "protein_g": 15.5,
+    "fat_g": 25.1,
+    "fibre_g": 11.5,
+    "carb_g": 69.7
+  }
+}
