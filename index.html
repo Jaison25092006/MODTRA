@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#059669" />
+<title>NutriScan — Indian food calories</title>
+<style>
+  :root{
+    --accent:#10b981; --accent-600:#059669; --accent-weak:#ecfdf5;
+    --bg:#f6f7f9; --surface:#ffffff; --text:#0f172a; --muted:#64748b;
+    --border:#e5e8ec; --amber:#b45309; --amber-weak:#fef3c7;
+    --radius:20px; --radius-sm:12px;
+    --shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --safe-top:env(safe-area-inset-top); --safe-bottom:env(safe-area-inset-bottom);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font); color:var(--text); background:var(--bg);
+    -webkit-font-smoothing:antialiased; line-height:1.45;
+    overflow-x:hidden;
+  }
+
+  /* ---------- app bar ---------- */
+  .appbar{
+    position:sticky; top:0; z-index:20;
+    display:flex; align-items:center; gap:10px;
+    padding:calc(12px + var(--safe-top)) 20px 12px;
+    background:rgba(255,255,255,.85); backdrop-filter:saturate(180%) blur(12px);
+    border-bottom:1px solid var(--border);
+  }
+  .logo{
+    width:32px; height:32px; border-radius:10px; flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),var(--accent-600));
+    display:grid; place-items:center; color:#fff;
+    box-shadow:0 4px 10px rgba(16,185,129,.35);
+  }
+  .appbar h1{font-size:17px; font-weight:700; margin:0; letter-spacing:-.01em;}
+  .appbar .sub{font-size:12px; color:var(--muted); font-weight:500;}
+
+  /* ---------- layout ---------- */
+  main{
+    max-width:520px; margin:0 auto;
+    padding:16px 16px calc(120px + var(--safe-bottom));
+  }
+  .fade{animation:fade .35s ease both;}
+  @keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+
+  /* ---------- empty state ---------- */
+  .empty{
+    text-align:center; padding:56px 24px; color:var(--muted);
+  }
+  .empty .ring{
+    width:96px; height:96px; margin:0 auto 20px; border-radius:50%;
+    background:var(--accent-weak); display:grid; place-items:center; color:var(--accent-600);
+  }
+  .empty h2{color:var(--text); font-size:20px; margin:0 0 6px;}
+  .empty p{margin:0 auto; max-width:280px; font-size:14px;}
+
+  /* ---------- photo card ---------- */
+  .photo{
+    border-radius:var(--radius); overflow:hidden; margin-bottom:16px;
+    box-shadow:var(--shadow); background:var(--surface); border:1px solid var(--border);
+  }
+  .photo img{display:block; width:100%; height:220px; object-fit:cover;}
+
+  /* ---------- result cards ---------- */
+  .card{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow);
+  }
+  .card.top{border-color:#cdeede;}
+  .card.unavail{background:#fafafa;}
+  .card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+  .dish{font-size:17px; font-weight:700; letter-spacing:-.01em; text-transform:capitalize;}
+  .serving{font-size:12px; color:var(--muted); margin-top:2px;}
+
+  .chip{
+    flex:0 0 auto; font-size:12px; font-weight:700; padding:5px 10px; border-radius:999px;
+    background:#f1f5f9; color:#475569;
+  }
+  .chip.hi{background:var(--accent-weak); color:var(--accent-600);}
+  .chip.mid{background:#eff6ff; color:#1d4ed8;}
+
+  .kcal{margin:14px 0 4px; display:flex; align-items:baseline; gap:6px;}
+  .kcal b{font-size:30px; font-weight:800; letter-spacing:-.02em;}
+  .kcal span{font-size:13px; color:var(--muted); font-weight:600;}
+
+  .macros{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px;}
+  .pill{
+    background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:8px 6px; text-align:center;
+  }
+  .pill .v{font-size:15px; font-weight:700;}
+  .pill .l{font-size:10.5px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+
+  .estimate{
+    display:inline-flex; align-items:center; gap:6px; margin-top:12px;
+    font-size:12.5px; font-weight:600; color:var(--amber);
+    background:var(--amber-weak); padding:7px 11px; border-radius:999px;
+  }
+  .addman{
+    margin-top:8px; font-size:13px; color:var(--muted); font-weight:600;
+    display:flex; align-items:center; gap:8px;
+  }
+  .addman button{
+    margin-left:auto; border:1px solid var(--border); background:#fff; color:var(--text);
+    font-weight:600; font-size:13px; padding:7px 12px; border-radius:10px; cursor:pointer;
+  }
+
+  /* ---------- scan bar ---------- */
+  .scanbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    padding:12px 16px calc(12px + var(--safe-bottom));
+    background:linear-gradient(180deg,rgba(246,247,249,0),var(--bg) 40%);
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+  }
+  .scan{
+    width:100%; max-width:488px; border:0; cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent-600)); color:#fff;
+    font-size:16px; font-weight:700; padding:16px; border-radius:16px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    box-shadow:0 8px 20px rgba(16,185,129,.35); transition:transform .12s ease, opacity .2s;
+  }
+  .scan:active{transform:scale(.98);}
+  .scan[disabled]{opacity:.55; cursor:default; box-shadow:none;}
+  .linkbtn{background:none; border:0; color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;}
+
+  /* ---------- loading overlay ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:40; display:none; place-items:center;
+    background:rgba(246,247,249,.72); backdrop-filter:blur(3px);
+  }
+  .overlay.show{display:grid;}
+  .spinner{
+    width:44px; height:44px; border-radius:50%;
+    border:4px solid #d1fae5; border-top-color:var(--accent-600); animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .overlay p{margin-top:14px; font-size:14px; color:var(--muted); font-weight:600;}
+  .banner{
+    margin:0 0 12px; padding:12px 14px; border-radius:12px; font-size:13.5px;
+    background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;
+  }
+  svg{display:block;}
+
+  /* ---------- food log ---------- */
+  .log-card{margin-bottom:16px;}
+  .log-nav{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .log-date{font-size:15px; font-weight:700; letter-spacing:-.01em; text-align:center; flex:1 1 auto;}
+  .log-arrow{
+    flex:0 0 auto; width:34px; height:34px; border-radius:10px; cursor:pointer;
+    border:1px solid var(--border); background:#fff; color:var(--text);
+    font-size:20px; line-height:1; display:grid; place-items:center; transition:background .15s, opacity .15s;
+  }
+  .log-arrow:active{background:var(--accent-weak);}
+  .log-arrow[disabled]{opacity:.35; cursor:default;}
+  .log-total{display:flex; align-items:baseline; gap:6px; margin-top:8px;}
+  .log-total b{font-size:28px; font-weight:800; letter-spacing:-.02em;}
+  .log-total span{font-size:13px; color:var(--muted); font-weight:600;}
+  .log-list{margin-top:12px; display:flex; flex-direction:column; gap:8px;}
+  .log-empty{font-size:13px; color:var(--muted); padding:4px 0;}
+  .log-item{
+    display:flex; align-items:center; gap:10px; padding:10px 12px;
+    background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm);
+  }
+  .log-item .li-name{font-weight:600; font-size:14px; text-transform:capitalize; flex:1 1 auto; min-width:0;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .log-item .li-kcal{font-weight:700; font-size:14px; flex:0 0 auto;}
+  .log-item .li-del{
+    flex:0 0 auto; width:28px; height:28px; border-radius:8px; border:1px solid var(--border);
+    background:#fff; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; display:grid; place-items:center;
+  }
+  .log-item .li-del:active{background:#fef2f2; color:#b91c1c;}
+
+  /* add-to-log controls on result cards */
+  .addrow{display:flex; align-items:center; gap:8px; margin-top:14px;}
+  .addbtn{
+    border:0; cursor:pointer; font-weight:700; font-size:14px; padding:10px 16px; border-radius:12px;
+    background:var(--accent-weak); color:var(--accent-600); transition:opacity .2s;
+  }
+  .addbtn:active{opacity:.7;}
+  .addbtn[disabled]{background:#f1f5f9; color:#94a3b8; cursor:default;}
+  .kcal-input{
+    flex:1 1 auto; min-width:0; font-size:15px; padding:10px 12px; border-radius:12px;
+    border:1px solid var(--border); background:#fff; color:var(--text); font-family:inherit;
+  }
+  .kcal-input:focus{outline:2px solid var(--accent); outline-offset:-1px;}
+</style>
+</head>
+<body>
+  <header class="appbar">
+    <div class="logo" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><circle cx="12" cy="12" r="3.2"/></svg>
+    </div>
+    <div>
+      <h1>NutriScan</h1>
+      <div class="sub">Indian &amp; Tamil food · on-device</div>
+    </div>
+  </header>
+
+  <main>
+    <div id="banner" class="banner" hidden></div>
+
+    <section id="logCard" class="card log-card fade">
+      <div class="log-nav">
+        <button id="logBack" class="log-arrow" type="button" aria-label="Previous day">&#8249;</button>
+        <div class="log-date" id="logDate">Today</div>
+        <button id="logFwd" class="log-arrow" type="button" aria-label="Next day">&#8250;</button>
+      </div>
+      <div class="log-total"><b id="logTotal">0</b> <span>kcal</span></div>
+      <div id="logList" class="log-list"></div>
+    </section>
+
+    <section id="empty" class="empty fade">
+      <div class="ring">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      </div>
+      <h2>Scan a dish</h2>
+      <p>Point your camera at a plate of food to estimate its calories and macros.</p>
+    </section>
+
+    <section id="photoCard" class="photo fade" hidden>
+      <img id="photo" alt="Captured food" />
+    </section>
+
+    <div id="results"></div>
+  </main>
+
+  <div class="scanbar">
+    <button id="scanBtn" class="scan" disabled>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      <span id="scanLabel">Loading model…</span>
+    </button>
+    <button id="uploadBtn" class="linkbtn" hidden>Choose from library instead</button>
+  </div>
+
+  <input id="camInput" type="file" accept="image/*" capture="environment" hidden />
+  <input id="libInput" type="file" accept="image/*" hidden />
+
+  <div id="overlay" class="overlay"><div style="text-align:center"><div class="spinner"></div><p>Analyzing…</p></div></div>
+
+  <script src="./tf.min.js"></script>
+  <script>
+  "use strict";
+
+  // ---- exact relative paths (do not rename the user's files) ----
+  const MODEL_URL = "./web_model/model.json";
+  const LABELS_URL = "./labels.txt";
+  const NUTRITION_URL = "./label_nutrition.json";
+  const INPUT_SIZE = 224;
+
+  const el = (id) => document.getElementById(id);
+  let model = null, labels = [], nutrition = {}, currentPreds = [];
+
+  function showBanner(title, detail){
+    const b = el("banner");
+    b.innerHTML = `<strong>${title}</strong>` +
+      (detail ? `<div style="margin-top:4px;font-weight:500;opacity:.92">${detail}</div>` : "");
+    b.hidden = false;
+    b.scrollIntoView({ block: "nearest" });
+  }
+  function hideBanner(){ el("banner").hidden = true; }
+
+  async function init(){
+    // If tf.min.js didn't load at all, `tf` is undefined — say so plainly.
+    if (typeof tf === "undefined"){
+      showBanner("TensorFlow.js didn't load",
+        "tf.min.js is missing or blocked. Make sure tf.min.js sits next to index.html in your deploy.");
+      el("scanLabel").textContent = "Load failed";
+      return;
+    }
+    try{
+      const [m, labelsTxt, nutJson] = await Promise.all([
+        tf.loadGraphModel(MODEL_URL).catch(() => { throw new Error("web_model/model.json (or its weight shard)"); }),
+        fetch(LABELS_URL).then(r => { if(!r.ok) throw new Error("labels.txt ("+r.status+")"); return r.text(); }),
+        fetch(NUTRITION_URL).then(r => { if(!r.ok) throw new Error("label_nutrition.json ("+r.status+")"); return r.json(); }),
+      ]);
+      model = m;
+      labels = labelsTxt.split(/\r?\n/).map(s => s.trim()).filter(Boolean);  // model order — never sorted
+      nutrition = nutJson;
+
+      // Warm up so the first real scan is fast.
+      tf.tidy(() => model.predict(tf.zeros([1, INPUT_SIZE, INPUT_SIZE, 3])));
+
+      el("scanBtn").disabled = false;
+      el("scanLabel").textContent = "Scan food";
+      el("uploadBtn").hidden = false;
+      hideBanner();
+      console.log("Model + " + labels.length + " labels loaded.");
+    }catch(err){
+      console.error(err);
+      showBanner("Couldn't load: " + err.message,
+        "Confirm web_model/, labels.txt and label_nutrition.json sit next to index.html, then reload.");
+      el("scanLabel").textContent = "Load failed";
+    }
+  }
+
+  // ---- inference: RAW 0-255 float input (NO /255) ----
+  async function classify(imgEl){
+    const logits = tf.tidy(() => {
+      let img = tf.browser.fromPixels(imgEl);                 // [h,w,3], 0-255 ints
+      img = tf.image.resizeBilinear(img, [INPUT_SIZE, INPUT_SIZE]);
+      img = img.toFloat();                                    // keep 0-255 range — do NOT divide
+      return model.predict(img.expandDims(0));                // [1, 95] softmax
+    });
+    const probs = await logits.data();
+    logits.dispose();
+    return [...probs.keys()]
+      .sort((a, b) => probs[b] - probs[a])
+      .slice(0, 3)
+      .map(i => ({ label: labels[i], conf: probs[i], nut: nutrition[labels[i]] }));
+  }
+
+  // ---- rendering ----
+  const cap = (s) => (s || "").replace(/_/g, " ");
+  const round = (x) => (x == null ? null : Math.round(x));
+  const hasNumber = (n) => n && n.kcal != null && n.status !== "unavailable";
+  const isEstimate = (n) => n && (n.status === "estimated" || n.status === "manual");
+
+  function macroPill(label, val){
+    const v = (val == null) ? "—" : Math.round(val) + "g";
+    return `<div class="pill"><div class="v">${v}</div><div class="l">${label}</div></div>`;
+  }
+
+  function confChip(conf){
+    const pct = Math.round(conf * 100);
+    const cls = pct >= 60 ? "hi" : pct >= 30 ? "mid" : "";
+    return `<span class="chip ${cls}">${pct}%</span>`;
+  }
+
+  function cardHTML(pred, isTop, idx){
+    const n = pred.nut;
+    const title = (n && n.name) ? n.name : cap(pred.label);
+    let body;
+    if (hasNumber(n)){
+      body = `
+        <div class="kcal"><b>${round(n.kcal)}</b><span>kcal · ${n.serving || "serving"}</span></div>
+        <div class="macros">
+          ${macroPill("Protein", n.protein_g)}
+          ${macroPill("Carbs", n.carb_g)}
+          ${macroPill("Fat", n.fat_g)}
+          ${macroPill("Fibre", n.fibre_g)}
+        </div>
+        ${isEstimate(n) ? `<div class="estimate">⚠︎ Estimate — tap to confirm</div>` : ``}
+        <div class="addrow"><button class="addbtn" type="button" data-add="${idx}">Add to log</button></div>`;
+    } else {
+      body = `<div class="addman">No nutrition data — enter calories to log it</div>
+              <div class="addrow">
+                <input id="kcal-${idx}" class="kcal-input" type="number" inputmode="numeric" min="0" placeholder="kcal" />
+                <button class="addbtn" type="button" data-add="${idx}">Add</button>
+              </div>`;
+    }
+    return `<div class="card ${isTop ? "top" : ""} ${hasNumber(n) ? "" : "unavail"} fade">
+      <div class="card-head">
+        <div><div class="dish">${title}</div>${hasNumber(n) ? `<div class="serving">per ${n.serving || "serving"}</div>` : ``}</div>
+        ${confChip(pred.conf)}
+      </div>
+      ${body}
+    </div>`;
+  }
+
+  function render(preds){
+    currentPreds = preds;
+    el("results").innerHTML = preds.map((p, i) => cardHTML(p, i === 0, i)).join("");
+  }
+
+  // ---- photo handling ----
+  function handleFile(file){
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const img = el("photo");
+    img.onload = async () => {
+      el("empty").hidden = true;
+      el("photoCard").hidden = false;
+      el("overlay").classList.add("show");
+      hideBanner();
+      try{
+        await img.decode?.();
+        const preds = await classify(img);
+        render(preds);
+      }catch(err){
+        console.error(err);
+        showBanner("Scan failed", err.message);
+      }finally{
+        el("overlay").classList.remove("show");
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.src = url;
+  }
+
+  // ---- food log with date/history view (localStorage, grouped by date; offline) ----
+  const LOG_KEY = "nutriscan_log_v1";
+  let viewedDate = startOfDay(new Date());   // default view is always Today
+
+  function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function keyOf(d){
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  function todayKey(){ return keyOf(new Date()); }
+  function isToday(d){ return keyOf(d) === todayKey(); }
+  function labelOf(d){
+    const diff = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+    if (diff === 0) return "Today";
+    if (diff === 1) return "Yesterday";
+    return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  function loadLog(){
+    try { return JSON.parse(localStorage.getItem(LOG_KEY) || "{}"); } catch { return {}; }
+  }
+  function saveLog(log){ localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+
+  function addToLog(entry){
+    const log = loadLog(), k = todayKey();
+    (log[k] = log[k] || []).push(entry);
+    saveLog(log);
+    viewedDate = startOfDay(new Date());   // logging a meal always lands you on Today
+    renderLog();
+  }
+  function deleteFromLog(id){
+    const log = loadLog(), k = keyOf(viewedDate);   // delete from whichever day is shown
+    if (log[k]) {
+      log[k] = log[k].filter(e => e.id !== id);
+      if (!log[k].length) delete log[k];
+      saveLog(log);
+      renderLog();
+    }
+  }
+  function shiftDay(delta){
+    const d = new Date(viewedDate); d.setDate(d.getDate() + delta);
+    if (startOfDay(d) > startOfDay(new Date())) return;   // never navigate past Today
+    viewedDate = startOfDay(d);
+    renderLog();
+  }
+
+  function renderLog(){
+    const items = (loadLog()[keyOf(viewedDate)] || []);
+    const total = items.reduce((s, e) => s + (Number(e.kcal) || 0), 0);
+    el("logDate").textContent = labelOf(viewedDate);
+    el("logTotal").textContent = Math.round(total);
+    el("logFwd").disabled = isToday(viewedDate);   // can't go into the future
+    el("logList").innerHTML = items.length
+      ? items.map(e => `
+          <div class="log-item">
+            <span class="li-name">${cap(e.name)}</span>
+            <span class="li-kcal">${Math.round(e.kcal)} kcal</span>
+            <button class="li-del" type="button" data-del="${e.id}" aria-label="Delete">&times;</button>
+          </div>`).join("")
+      : `<div class="log-empty">No meals logged.</div>`;
+  }
+
+  // Add-to-log from a result card
+  el("results").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-add]");
+    if (!btn || btn.disabled) return;
+    const p = currentPreds[+btn.getAttribute("data-add")];
+    if (!p) return;
+    const n = p.nut;
+    const name = (n && n.name) ? n.name : cap(p.label);
+    let kcal, protein = null, fat = null, fibre = null;
+
+    if (hasNumber(n)) {
+      kcal = Math.round(n.kcal);
+      protein = n.protein_g; fat = n.fat_g; fibre = n.fibre_g;
+    } else {
+      const input = el("kcal-" + (+btn.getAttribute("data-add")));
+      const v = input ? parseFloat(input.value) : NaN;
+      if (!(v > 0)) { input && input.focus(); return; }   // require a number for unavailable dishes
+      kcal = Math.round(v);
+    }
+    addToLog({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name, kcal, protein, fat, fibre, ts: Date.now(),
+    });
+    btn.textContent = "Added ✓";
+    btn.disabled = true;
+  });
+
+  // Delete from the currently viewed day's log
+  el("logList").addEventListener("click", (e) => {
+    const del = e.target.closest("[data-del]");
+    if (del) deleteFromLog(del.getAttribute("data-del"));
+  });
+
+  // Day navigation
+  el("logBack").addEventListener("click", () => shiftDay(-1));
+  el("logFwd").addEventListener("click", () => shiftDay(1));
+
+  el("scanBtn").addEventListener("click", () => { if (!el("scanBtn").disabled) el("camInput").click(); });
+  el("uploadBtn").addEventListener("click", () => el("libInput").click());
+  el("camInput").addEventListener("change", (e) => handleFile(e.target.files[0]));
+  el("libInput").addEventListener("change", (e) => handleFile(e.target.files[0]));
+
+  renderLog();
+  init();
+  </script>
+</body>
+</html>
