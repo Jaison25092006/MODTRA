@@ -3,7 +3,7 @@
    (e.g. after re-exporting the model) so clients pick up the new files. */
 "use strict";
 
-const CACHE = "nutriscan-v8";
+const CACHE = "nutriscan-v9";
 
 // Files that change whenever the app or model is re-deployed. These are served
 // network-first (cache only as an offline fallback) so a stale copy in an old
@@ -72,8 +72,10 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
 
-  let path = "";
-  try { path = new URL(req.url).pathname; } catch (_) { /* opaque URL */ }
+  let url = null;
+  try { url = new URL(req.url); } catch (_) { return; }
+  if (url.origin !== self.location.origin) return;   // e.g. Google sign-in script
+  const path = url.pathname;
 
   // Network-first for the app shell + model/data: always current when online,
   // still fully usable from cache when offline.

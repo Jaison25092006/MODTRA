@@ -249,6 +249,28 @@
   @keyframes spin{to{transform:rotate(360deg);}}
   .overlay p{margin-top:14px; font-size:14px; color:var(--muted); font-weight:600;}
 
+  /* ---------- account ---------- */
+  .acct{display:flex; align-items:center; gap:12px;}
+  .acct img{width:44px; height:44px; border-radius:50%; flex:0 0 auto; background:#eef1f4;}
+  .acct .a-main{flex:1 1 auto; min-width:0;}
+  .acct .a-name{font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .acct .a-mail{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .acct .a-out{
+    flex:0 0 auto; border:1px solid var(--border); background:#fff; color:var(--text);
+    font-weight:700; font-size:13px; padding:8px 12px; border-radius:10px; cursor:pointer;
+  }
+  .acct .a-out:active{background:#fef2f2; color:#b91c1c;}
+  .guest{font-size:13px; color:var(--muted); margin:2px 0 12px;}
+  .setup{
+    font-size:12.5px; color:var(--muted); background:#f8fafc; border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:12px; line-height:1.55;
+  }
+  .setup code{
+    background:#eef1f4; padding:1px 5px; border-radius:5px;
+    font-size:11.5px; word-break:break-all;
+  }
+  .setup b{color:var(--text);}
+
   /* ---------- food search ---------- */
   .results-list{
     margin-top:12px; display:flex; flex-direction:column; gap:6px;
@@ -431,6 +453,8 @@
 
     <!-- ================= SETTINGS ================= -->
     <section id="view-settings" class="view fade" hidden>
+      <div class="card" id="accountCard"></div>
+
       <div class="card">
         <div class="sec-title" style="margin:0 0 12px">Daily goals</div>
         <div class="field">
@@ -540,6 +564,7 @@
   })();
   </script>
 
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./tf.min.js"></script>
   <script src="./tf-backend-wasm.min.js"></script>
   <script>
@@ -661,7 +686,15 @@
   // ================= STORAGE =================
   const LOG_KEY = "nutriscan_log_v1";
   const GOALS_KEY = "nutriscan_goals_v1";
+  const USER_KEY = "nutriscan_user_v1";
   const MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+
+  // Signed-in Google account, or null for "guest". Each account gets its own
+  // diary on this device by suffixing the storage keys; guest data keeps the
+  // original un-suffixed keys so nothing that was already logged moves.
+  let currentUser = null;
+  function logKey(){ return currentUser ? LOG_KEY + "::" + currentUser.sub : LOG_KEY; }
+  function goalsKey(){ return currentUser ? GOALS_KEY + "::" + currentUser.sub : GOALS_KEY; }
   const DEFAULT_GOALS = { kcal: 2000, protein: null, carbs: null, fat: null };
 
   let viewedDate = startOfDay(new Date());   // diary always opens on Today
@@ -713,22 +746,22 @@
 
   function loadLog(){
     let raw = {};
-    try { raw = JSON.parse(localStorage.getItem(LOG_KEY) || "{}"); } catch (_) { raw = {}; }
+    try { raw = JSON.parse(localStorage.getItem(logKey()) || "{}"); } catch (_) { raw = {}; }
     const out = {};
     for (const k of Object.keys(raw)){
       if (Array.isArray(raw[k])) out[k] = raw[k].map(normalizeEntry);
     }
     return out;
   }
-  function saveLog(log){ localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+  function saveLog(log){ localStorage.setItem(logKey(), JSON.stringify(log)); }
 
   function loadGoals(){
     try {
-      const g = JSON.parse(localStorage.getItem(GOALS_KEY) || "null");
+      const g = JSON.parse(localStorage.getItem(goalsKey()) || "null");
       return g ? Object.assign({}, DEFAULT_GOALS, g) : Object.assign({}, DEFAULT_GOALS);
     } catch (_) { return Object.assign({}, DEFAULT_GOALS); }
   }
-  function saveGoalsObj(g){ localStorage.setItem(GOALS_KEY, JSON.stringify(g)); }
+  function saveGoalsObj(g){ localStorage.setItem(goalsKey(), JSON.stringify(g)); }
 
   const entryKcal = (e) => (e.unit.kcal || 0) * (e.servings || 1);
   const entryMacro = (e, k) => (e.unit[k] == null ? 0 : e.unit[k] * (e.servings || 1));
@@ -755,7 +788,9 @@
   }
 
   // ================= VIEWS =================
+  let currentView = "diary";
   function showView(name){
+    currentView = name;
     if (name !== "scan") closeCamera();   // never leave the camera running in the background
     ["diary","scan","progress","settings"].forEach(v => { el("view-" + v).hidden = (v !== name); });
     document.querySelectorAll(".tab").forEach(t =>
@@ -763,7 +798,7 @@
     el("viewSub").textContent = name.charAt(0).toUpperCase() + name.slice(1);
     if (name === "diary") renderDiary();
     if (name === "progress") renderProgress();
-    if (name === "settings") fillSettings();
+    if (name === "settings"){ fillSettings(); renderAccount(); }
     window.scrollTo(0, 0);
   }
 
@@ -1188,6 +1223,152 @@
     showView("diary");
   }
 
+  // ================= GOOGLE SIGN-IN (identity only, no server) =================
+  // Real Google Identity Services. The ID token is decoded in the browser purely
+  // to show who is signed in and to keep each account's diary separate on this
+  // device. There is no backend, so the token is NOT verified server-side and
+  // nothing is uploaded — this is identity, not a security boundary.
+  //
+  // SETUP: create an OAuth 2.0 Client ID (Web application) at
+  // console.cloud.google.com/apis/credentials, add this site as an authorised
+  // JavaScript origin, and paste the ID below.
+  const GOOGLE_CLIENT_ID = "";   // <-- paste your Client ID here
+
+  function decodeJwtPayload(token){
+    try{
+      const part = String(token).split(".")[1];
+      const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+      const json = decodeURIComponent(atob(b64).split("").map(function(c){
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(""));
+      return JSON.parse(json);
+    }catch(_){ return null; }
+  }
+
+  function loadUser(){
+    try{ return JSON.parse(localStorage.getItem(USER_KEY) || "null"); }catch(_){ return null; }
+  }
+  function saveUser(u){
+    if (u) localStorage.setItem(USER_KEY, JSON.stringify(u));
+    else localStorage.removeItem(USER_KEY);
+  }
+
+  function onGoogleCredential(resp){
+    const p = decodeJwtPayload(resp && resp.credential);
+    if (!p || !p.sub){ showBanner("Sign-in failed", "Could not read the Google account details."); return; }
+    const user = {
+      sub: p.sub, name: p.name || p.email || "Account",
+      email: p.email || "", picture: p.picture || "",
+    };
+    // First sign-in on this device inherits whatever was logged as guest, so a
+    // diary never appears to vanish. Later sign-ins use the account's own data.
+    const accLog = LOG_KEY + "::" + user.sub;
+    if (localStorage.getItem(accLog) === null){
+      const guestLog = localStorage.getItem(LOG_KEY);
+      if (guestLog) localStorage.setItem(accLog, guestLog);
+      const accGoals = GOALS_KEY + "::" + user.sub;
+      const guestGoals = localStorage.getItem(GOALS_KEY);
+      if (guestGoals && localStorage.getItem(accGoals) === null) localStorage.setItem(accGoals, guestGoals);
+    }
+    currentUser = user;
+    saveUser(user);
+    renderAccount();
+    showView(currentView);
+  }
+
+  function signOutGoogle(){
+    try{
+      if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
+    }catch(_){}
+    currentUser = null;
+    saveUser(null);
+    renderAccount();
+    showView(currentView);
+  }
+
+  function renderAccount(){
+    const card = el("accountCard");
+    if (!card) return;
+
+    if (currentUser){
+      const pic = currentUser.picture
+        ? `<img src="${esc(currentUser.picture)}" alt="" referrerpolicy="no-referrer" />`
+        : `<img alt="" />`;
+      card.innerHTML =
+        `<div class="sec-title" style="margin:0 0 12px">Account</div>
+         <div class="acct">${pic}
+           <div class="a-main">
+             <div class="a-name">${esc(currentUser.name)}</div>
+             <div class="a-mail">${esc(currentUser.email)}</div>
+           </div>
+           <button class="a-out" type="button" id="signOutBtn">Sign out</button>
+         </div>`;
+      const b = el("signOutBtn");
+      if (b) b.addEventListener("click", signOutGoogle);
+      return;
+    }
+
+    if (!GOOGLE_CLIENT_ID){
+      card.innerHTML =
+        `<div class="sec-title" style="margin:0 0 10px">Account</div>
+         <div class="guest">Using NutriScan as a guest — everything is saved on this device.</div>
+         <div class="setup"><b>To enable Google sign-in:</b><br>
+           1. Open <code>console.cloud.google.com/apis/credentials</code><br>
+           2. Create <b>OAuth client ID → Web application</b><br>
+           3. Add authorised JavaScript origin:<br><code>${esc(location.origin)}</code><br>
+           4. Paste the Client ID into <code>GOOGLE_CLIENT_ID</code> in index.html
+         </div>`;
+      return;
+    }
+
+    card.innerHTML =
+      `<div class="sec-title" style="margin:0 0 10px">Account</div>
+       <div class="guest">Sign in to keep a separate diary for your Google account on this device.</div>
+       <div id="gbtn"></div>`;
+
+    if (window.google && google.accounts && google.accounts.id){
+      try{
+        google.accounts.id.renderButton(el("gbtn"),
+          { theme: "outline", size: "large", shape: "pill", text: "signin_with", width: 260 });
+      }catch(err){
+        el("gbtn").innerHTML = `<div class="guest">Sign-in button unavailable: ${esc(err.message)}</div>`;
+      }
+    } else {
+      el("gbtn").innerHTML =
+        `<div class="guest">Google sign-in needs an internet connection. Everything else works offline.</div>`;
+    }
+  }
+
+  function initGoogle(){
+    currentUser = loadUser();      // restore the last signed-in account
+    renderAccount();
+    if (!GOOGLE_CLIENT_ID) return;
+
+    // The GIS script is loaded async and may be slow (or absent offline), so
+    // poll briefly rather than assuming it is there.
+    let tries = 0;
+    const timer = setInterval(function(){
+      tries++;
+      if (window.google && google.accounts && google.accounts.id){
+        clearInterval(timer);
+        try{
+          google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: onGoogleCredential,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+        }catch(err){
+          console.warn("Google init failed:", err && err.message);
+        }
+        renderAccount();
+      } else if (tries > 40){
+        clearInterval(timer);      // ~10s: offline or blocked
+        renderAccount();
+      }
+    }, 250);
+  }
+
   // ================= MANUAL SEARCH =================
   // Searches the whole INDB list (foods.json), not just the 95 dishes the model
   // knows. Names include the regional spellings INDB keeps in brackets, so
@@ -1392,6 +1573,7 @@
   // Migrate any legacy flat entries into the new shape once, on boot.
   saveLog(loadLog());
 
+  initGoogle();
   showView("diary");
   init();
   </script>
