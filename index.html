@@ -249,6 +249,28 @@
   @keyframes spin{to{transform:rotate(360deg);}}
   .overlay p{margin-top:14px; font-size:14px; color:var(--muted); font-weight:600;}
 
+  /* ---------- live camera ---------- */
+  .cam{position:fixed; inset:0; z-index:70; display:none; background:#000;}
+  .cam.show{display:block;}
+  .cam video{width:100%; height:100%; object-fit:cover;}
+  .cam-bar{
+    position:absolute; left:0; right:0; bottom:0;
+    padding:18px 22px calc(22px + var(--safe-bottom));
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.55));
+  }
+  .cam-btn{
+    background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:12px;
+    padding:10px 15px; font-size:14px; font-weight:700; cursor:pointer;
+    backdrop-filter:blur(6px); min-width:74px;
+  }
+  .cam-shot{
+    width:66px; height:66px; border-radius:50%; cursor:pointer;
+    background:#fff; border:5px solid rgba(255,255,255,.55);
+    box-shadow:0 4px 18px rgba(0,0,0,.45); flex:0 0 auto;
+  }
+  .cam-shot:active{transform:scale(.94);}
+
   .sheet{position:fixed; inset:0; z-index:60; display:none;}
   .sheet.show{display:block;}
   .sheet .backdrop{position:absolute; inset:0; background:rgba(15,23,42,.42);}
@@ -436,6 +458,18 @@
       <span>Settings</span>
     </button>
   </nav>
+
+  <!-- Live camera (getUserMedia). camInput is only the fallback when a device
+       or browser won't give us a stream — on iOS it opens the native camera. -->
+  <div id="cam" class="cam">
+    <video id="camVideo" playsinline autoplay muted></video>
+    <div class="cam-bar">
+      <button id="camCancel" class="cam-btn" type="button">Cancel</button>
+      <button id="camShot" class="cam-shot" type="button" aria-label="Take photo"></button>
+      <button id="camFlip" class="cam-btn" type="button">Flip</button>
+    </div>
+  </div>
+  <canvas id="camCanvas" hidden></canvas>
 
   <input id="camInput" type="file" accept="image/*" capture="environment" hidden />
   <input id="libInput" type="file" accept="image/*" hidden />
@@ -661,6 +695,7 @@
 
   // ================= VIEWS =================
   function showView(name){
+    if (name !== "scan") closeCamera();   // never leave the camera running in the background
     ["diary","scan","progress","settings"].forEach(v => { el("view-" + v).hidden = (v !== name); });
     document.querySelectorAll(".tab").forEach(t =>
       t.classList.toggle("active", t.getAttribute("data-view") === name));
@@ -870,29 +905,82 @@
     el("results").innerHTML = preds.map((p, i) => cardHTML(p, i === 0, i)).join("");
   }
 
-  // ---- photo handling ----
+  // ---- scanning ----
+  // Runs the model over any pixel source (an <img> or a <canvas>); classify()
+  // itself is unchanged, so the raw 0-255 preprocessing is identical either way.
+  async function runScan(source){
+    el("empty").hidden = true;
+    el("photoCard").hidden = false;
+    el("overlay").classList.add("show");
+    hideBanner();
+    try{
+      render(await classify(source));
+    }catch(err){
+      console.error(err);
+      showBanner("Scan failed", err.message);
+    }finally{
+      el("overlay").classList.remove("show");
+    }
+  }
+
   function handleFile(file){
     if (!file) return;
     const url = URL.createObjectURL(file);
     const img = el("photo");
     img.onload = async () => {
-      el("empty").hidden = true;
-      el("photoCard").hidden = false;
-      el("overlay").classList.add("show");
-      hideBanner();
       try{
         await img.decode?.();
-        const preds = await classify(img);
-        render(preds);
-      }catch(err){
-        console.error(err);
-        showBanner("Scan failed", err.message);
-      }finally{
-        el("overlay").classList.remove("show");
+        await runScan(img);
+      } finally {
         URL.revokeObjectURL(url);
       }
     };
     img.src = url;
+  }
+
+  // ---- live camera ----
+  let stream = null, facing = "environment";
+
+  async function openCamera(){
+    // No getUserMedia (or no permission) -> fall back to the file input, which
+    // on a phone opens the native camera thanks to capture="environment".
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      el("camInput").click();
+      return;
+    }
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facing } }, audio: false,
+      });
+      el("camVideo").srcObject = stream;
+      el("cam").classList.add("show");
+    }catch(err){
+      console.warn("Live camera unavailable:", err && err.message);
+      el("camInput").click();
+    }
+  }
+
+  function closeCamera(){
+    if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+    el("camVideo").srcObject = null;
+    el("cam").classList.remove("show");
+  }
+
+  function takePhoto(){
+    const v = el("camVideo");
+    if (!v.videoWidth){ return; }                 // stream not ready yet
+    const c = el("camCanvas");
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+    el("photo").src = c.toDataURL("image/jpeg", 0.92);   // show what was captured
+    closeCamera();
+    runScan(c);                                   // classify the frame directly
+  }
+
+  async function flipCamera(){
+    facing = (facing === "environment") ? "user" : "environment";
+    closeCamera();
+    await openCamera();
   }
 
   // ================= SHEETS =================
@@ -1063,9 +1151,13 @@
     if (e.target && e.target.id === "unitKcal") syncSheet();
   });
 
-  // scan inputs
-  el("scanBtn").addEventListener("click", () => { if (!el("scanBtn").disabled) el("camInput").click(); });
+  // scan inputs: "Scan food" opens the live camera, the image button opens the
+  // photo library. camInput is only reached as a camera fallback.
+  el("scanBtn").addEventListener("click", () => { if (!el("scanBtn").disabled) openCamera(); });
   el("uploadBtn").addEventListener("click", () => el("libInput").click());
+  el("camShot").addEventListener("click", takePhoto);
+  el("camCancel").addEventListener("click", closeCamera);
+  el("camFlip").addEventListener("click", flipCamera);
   el("camInput").addEventListener("change", (e) => handleFile(e.target.files[0]));
   el("libInput").addEventListener("change", (e) => handleFile(e.target.files[0]));
 
