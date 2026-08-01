@@ -3,7 +3,7 @@
    (e.g. after re-exporting the model) so clients pick up the new files. */
 "use strict";
 
-const CACHE = "nutriscan-v2";
+const CACHE = "nutriscan-v3";
 
 // Every asset the app needs to run with zero network. Relative URLs so it
 // works under a GitHub Pages subpath (…/<repo>/) as well as at a domain root.

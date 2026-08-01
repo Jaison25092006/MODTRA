@@ -4,258 +4,448 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#059669" />
-<title>NutriScan — Indian food calories</title>
 <link rel="manifest" href="./manifest.json" />
 <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 <link rel="icon" type="image/png" href="./icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="NutriScan" />
+<title>NutriScan — Indian food calories</title>
 <style>
   :root{
     --accent:#10b981; --accent-600:#059669; --accent-weak:#ecfdf5;
-    --bg:#f6f7f9; --surface:#ffffff; --text:#0f172a; --muted:#64748b;
+    --bg:#f4f6f8; --surface:#ffffff; --text:#0f172a; --muted:#64748b;
     --border:#e5e8ec; --amber:#b45309; --amber-weak:#fef3c7;
-    --radius:20px; --radius-sm:12px;
-    --shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    --radius:18px; --radius-sm:12px;
+    --shadow:0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05);
     --safe-top:env(safe-area-inset-top); --safe-bottom:env(safe-area-inset-bottom);
+    --tabbar-h:64px;
     --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
   body{
     font-family:var(--font); color:var(--text); background:var(--bg);
-    -webkit-font-smoothing:antialiased; line-height:1.45;
-    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased; line-height:1.45; overflow-x:hidden;
   }
+  button{font-family:inherit;}
+  svg{display:block;}
 
   /* ---------- app bar ---------- */
   .appbar{
     position:sticky; top:0; z-index:20;
     display:flex; align-items:center; gap:10px;
-    padding:calc(12px + var(--safe-top)) 20px 12px;
-    background:rgba(255,255,255,.85); backdrop-filter:saturate(180%) blur(12px);
+    padding:calc(10px + var(--safe-top)) 20px 10px;
+    background:rgba(255,255,255,.88); backdrop-filter:saturate(180%) blur(12px);
     border-bottom:1px solid var(--border);
   }
   .logo{
-    width:32px; height:32px; border-radius:10px; flex:0 0 auto;
+    width:30px; height:30px; border-radius:9px; flex:0 0 auto;
     background:linear-gradient(135deg,var(--accent),var(--accent-600));
     display:grid; place-items:center; color:#fff;
-    box-shadow:0 4px 10px rgba(16,185,129,.35);
+    box-shadow:0 4px 10px rgba(16,185,129,.32);
   }
-  .appbar h1{font-size:17px; font-weight:700; margin:0; letter-spacing:-.01em;}
-  .appbar .sub{font-size:12px; color:var(--muted); font-weight:500;}
+  .appbar h1{font-size:16px; font-weight:700; margin:0; letter-spacing:-.01em;}
+  .appbar .sub{font-size:11.5px; color:var(--muted); font-weight:500;}
 
   /* ---------- layout ---------- */
   main{
     max-width:520px; margin:0 auto;
-    padding:16px 16px calc(120px + var(--safe-bottom));
+    padding:14px 16px calc(var(--tabbar-h) + 34px + var(--safe-bottom));
   }
-  .fade{animation:fade .35s ease both;}
-  @keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
-
-  /* ---------- empty state ---------- */
-  .empty{
-    text-align:center; padding:56px 24px; color:var(--muted);
-  }
-  .empty .ring{
-    width:96px; height:96px; margin:0 auto 20px; border-radius:50%;
-    background:var(--accent-weak); display:grid; place-items:center; color:var(--accent-600);
-  }
-  .empty h2{color:var(--text); font-size:20px; margin:0 0 6px;}
-  .empty p{margin:0 auto; max-width:280px; font-size:14px;}
-
-  /* ---------- photo card ---------- */
-  .photo{
-    border-radius:var(--radius); overflow:hidden; margin-bottom:16px;
-    box-shadow:var(--shadow); background:var(--surface); border:1px solid var(--border);
-  }
-  .photo img{display:block; width:100%; height:220px; object-fit:cover;}
-
-  /* ---------- result cards ---------- */
+  .view[hidden]{display:none;}
+  .fade{animation:fade .3s ease both;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
   .card{
     background:var(--surface); border:1px solid var(--border);
     border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow);
   }
+  .banner{
+    margin:0 0 12px; padding:12px 14px; border-radius:12px; font-size:13.5px;
+    background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;
+  }
+  .sec-title{font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.05em; margin:18px 4px 8px;}
+
+  /* ---------- date nav ---------- */
+  .datenav{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px;}
+  .datenav .d{font-size:15px; font-weight:700; letter-spacing:-.01em; text-align:center; flex:1 1 auto;}
+  .arrow{
+    flex:0 0 auto; width:34px; height:34px; border-radius:10px; cursor:pointer;
+    border:1px solid var(--border); background:#fff; color:var(--text);
+    font-size:20px; line-height:1; display:grid; place-items:center;
+  }
+  .arrow:active{background:var(--accent-weak);}
+  .arrow[disabled]{opacity:.35; cursor:default;}
+
+  /* ---------- calorie ring ---------- */
+  .summary{display:flex; align-items:center; gap:18px;}
+  .ringwrap{position:relative; width:118px; height:118px; flex:0 0 auto;}
+  .ringwrap svg{width:118px; height:118px;}
+  .ringtxt{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+  }
+  .ringtxt b{font-size:25px; font-weight:800; letter-spacing:-.02em; line-height:1.1;}
+  .ringtxt span{font-size:10.5px; color:var(--muted); font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em;}
+  .sumrows{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:9px;}
+  .sumrow{display:flex; align-items:baseline; justify-content:space-between; font-size:13.5px;}
+  .sumrow .k{color:var(--muted); font-weight:600;}
+  .sumrow .v{font-weight:800; font-size:15px;}
+  .sumrow.over .v{color:#b91c1c;}
+
+  /* macro bars */
+  .macrobars{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px;}
+  .mb .mb-top{display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:5px;}
+  .mb .mb-name{color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
+  .mb .mb-val{font-weight:700;}
+  .mb .track{height:6px; border-radius:99px; background:#eef1f4; overflow:hidden;}
+  .mb .fill{height:100%; border-radius:99px; background:var(--accent); transition:width .3s ease;}
+
+  /* ---------- meal sections ---------- */
+  .meal-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .meal-name{font-size:15.5px; font-weight:700; letter-spacing:-.01em;}
+  .meal-sub{font-size:13px; font-weight:700; color:var(--muted);}
+  .meal-items{margin-top:10px; display:flex; flex-direction:column; gap:6px;}
+  .item{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer;
+    background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm);
+  }
+  .item:active{background:var(--accent-weak);}
+  .item .i-main{flex:1 1 auto; min-width:0;}
+  .item .i-name{font-weight:600; font-size:14px; text-transform:capitalize;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .item .i-sub{font-size:11.5px; color:var(--muted); font-weight:500;}
+  .item .i-kcal{font-weight:700; font-size:14px; flex:0 0 auto;}
+  .meal-empty{font-size:13px; color:var(--muted); padding:8px 0 2px;}
+  .meal-add{
+    margin-top:10px; width:100%; border:1px dashed var(--border); background:#fff;
+    color:var(--accent-600); font-weight:700; font-size:13.5px; padding:10px;
+    border-radius:var(--radius-sm); cursor:pointer;
+  }
+  .meal-add:active{background:var(--accent-weak);}
+
+  /* ---------- scan view ---------- */
+  .empty{text-align:center; padding:40px 24px; color:var(--muted);}
+  .empty .ring{
+    width:88px; height:88px; margin:0 auto 18px; border-radius:50%;
+    background:var(--accent-weak); display:grid; place-items:center; color:var(--accent-600);
+  }
+  .empty h2{color:var(--text); font-size:19px; margin:0 0 6px;}
+  .empty p{margin:0 auto; max-width:280px; font-size:14px;}
+  .photo{
+    border-radius:var(--radius); overflow:hidden; margin-bottom:12px;
+    box-shadow:var(--shadow); background:var(--surface); border:1px solid var(--border);
+  }
+  .photo img{display:block; width:100%; height:200px; object-fit:cover;}
+  .scan-actions{display:flex; gap:10px; margin-bottom:14px;}
+  .btn{
+    border:0; cursor:pointer; font-weight:700; font-size:15px; padding:14px;
+    border-radius:14px; display:flex; align-items:center; justify-content:center; gap:9px;
+    transition:transform .12s ease, opacity .2s;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn[disabled]{opacity:.55; cursor:default; box-shadow:none;}
+  .btn-primary{
+    flex:1 1 auto; color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent-600));
+    box-shadow:0 6px 16px rgba(16,185,129,.3);
+  }
+  .btn-ghost{
+    flex:0 0 auto; background:#fff; color:var(--text); border:1px solid var(--border);
+  }
   .card.top{border-color:#cdeede;}
   .card.unavail{background:#fafafa;}
   .card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
-  .dish{font-size:17px; font-weight:700; letter-spacing:-.01em; text-transform:capitalize;}
+  .dish{font-size:16.5px; font-weight:700; letter-spacing:-.01em; text-transform:capitalize;}
   .serving{font-size:12px; color:var(--muted); margin-top:2px;}
-
-  .chip{
-    flex:0 0 auto; font-size:12px; font-weight:700; padding:5px 10px; border-radius:999px;
-    background:#f1f5f9; color:#475569;
-  }
+  .chip{flex:0 0 auto; font-size:12px; font-weight:700; padding:5px 10px; border-radius:999px;
+    background:#f1f5f9; color:#475569;}
   .chip.hi{background:var(--accent-weak); color:var(--accent-600);}
   .chip.mid{background:#eff6ff; color:#1d4ed8;}
-
-  .kcal{margin:14px 0 4px; display:flex; align-items:baseline; gap:6px;}
-  .kcal b{font-size:30px; font-weight:800; letter-spacing:-.02em;}
+  .kcal{margin:13px 0 4px; display:flex; align-items:baseline; gap:6px;}
+  .kcal b{font-size:28px; font-weight:800; letter-spacing:-.02em;}
   .kcal span{font-size:13px; color:var(--muted); font-weight:600;}
-
   .macros{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px;}
-  .pill{
-    background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm);
-    padding:8px 6px; text-align:center;
-  }
+  .pill{background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:8px 6px; text-align:center;}
   .pill .v{font-size:15px; font-weight:700;}
-  .pill .l{font-size:10.5px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
-
+  .pill .l{font-size:10.5px; color:var(--muted); font-weight:600;
+    text-transform:uppercase; letter-spacing:.03em;}
   .estimate{
     display:inline-flex; align-items:center; gap:6px; margin-top:12px;
     font-size:12.5px; font-weight:600; color:var(--amber);
     background:var(--amber-weak); padding:7px 11px; border-radius:999px;
   }
-  .addman{
-    margin-top:8px; font-size:13px; color:var(--muted); font-weight:600;
-    display:flex; align-items:center; gap:8px;
+  .addman{margin-top:10px; font-size:13px; color:var(--muted); font-weight:600;}
+  .addrow{display:flex; align-items:center; gap:8px; margin-top:12px;}
+  .addbtn{
+    border:0; cursor:pointer; font-weight:700; font-size:14px; padding:10px 16px;
+    border-radius:12px; background:var(--accent-weak); color:var(--accent-600);
   }
-  .addman button{
-    margin-left:auto; border:1px solid var(--border); background:#fff; color:var(--text);
-    font-weight:600; font-size:13px; padding:7px 12px; border-radius:10px; cursor:pointer;
-  }
+  .addbtn:active{opacity:.7;}
 
-  /* ---------- scan bar ---------- */
-  .scanbar{
-    position:fixed; left:0; right:0; bottom:0; z-index:20;
-    padding:12px 16px calc(12px + var(--safe-bottom));
-    background:linear-gradient(180deg,rgba(246,247,249,0),var(--bg) 40%);
-    display:flex; flex-direction:column; align-items:center; gap:8px;
+  /* ---------- progress ---------- */
+  .chartwrap{width:100%; overflow:hidden;}
+  .chartwrap svg{width:100%; height:auto;}
+  .statgrid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:4px;}
+  .stat{background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px;}
+  .stat .v{font-size:20px; font-weight:800; letter-spacing:-.02em;}
+  .stat .l{font-size:11px; color:var(--muted); font-weight:700;
+    text-transform:uppercase; letter-spacing:.04em;}
+
+  /* ---------- settings ---------- */
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12.5px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
+  .input{
+    width:100%; font-size:16px; padding:12px 14px; border-radius:12px;
+    border:1px solid var(--border); background:#fff; color:var(--text); font-family:inherit;
   }
-  .scan{
-    width:100%; max-width:488px; border:0; cursor:pointer;
+  .input:focus{outline:2px solid var(--accent); outline-offset:-1px;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  .kv{display:flex; justify-content:space-between; align-items:center;
+    font-size:13.5px; padding:9px 0; border-bottom:1px solid var(--border);}
+  .kv:last-child{border-bottom:0;}
+  .kv .k{color:var(--muted); font-weight:600;}
+  .kv .v{font-weight:700;}
+  .kv .v.badge{color:var(--accent-600); text-transform:uppercase; font-size:12px;
+    background:var(--accent-weak); padding:3px 9px; border-radius:999px;}
+
+  /* ---------- bottom tab bar ---------- */
+  .tabbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    display:grid; grid-template-columns:repeat(4,1fr);
+    background:rgba(255,255,255,.94); backdrop-filter:saturate(180%) blur(12px);
+    border-top:1px solid var(--border);
+    padding-bottom:var(--safe-bottom);
+  }
+  .tab{
+    border:0; background:none; cursor:pointer; padding:9px 0 7px;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    color:var(--muted); font-size:10.5px; font-weight:700; letter-spacing:.01em;
+  }
+  .tab.active{color:var(--accent-600);}
+  .tab.scan{position:relative;}
+  .tab.scan .fab{
+    width:48px; height:48px; margin-top:-16px; border-radius:50%;
     background:linear-gradient(135deg,var(--accent),var(--accent-600)); color:#fff;
-    font-size:16px; font-weight:700; padding:16px; border-radius:16px;
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    box-shadow:0 8px 20px rgba(16,185,129,.35); transition:transform .12s ease, opacity .2s;
+    display:grid; place-items:center; box-shadow:0 6px 16px rgba(16,185,129,.42);
+    border:3px solid var(--bg);
   }
-  .scan:active{transform:scale(.98);}
-  .scan[disabled]{opacity:.55; cursor:default; box-shadow:none;}
-  .linkbtn{background:none; border:0; color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;}
+  .tab.scan.active .fab{transform:scale(1.04);}
 
-  /* ---------- loading overlay ---------- */
+  /* ---------- overlay + sheet ---------- */
   .overlay{
-    position:fixed; inset:0; z-index:40; display:none; place-items:center;
-    background:rgba(246,247,249,.72); backdrop-filter:blur(3px);
+    position:fixed; inset:0; z-index:50; display:none; place-items:center;
+    background:rgba(244,246,248,.75); backdrop-filter:blur(3px);
   }
   .overlay.show{display:grid;}
   .spinner{
-    width:44px; height:44px; border-radius:50%;
+    width:42px; height:42px; border-radius:50%;
     border:4px solid #d1fae5; border-top-color:var(--accent-600); animation:spin .8s linear infinite;
   }
   @keyframes spin{to{transform:rotate(360deg);}}
   .overlay p{margin-top:14px; font-size:14px; color:var(--muted); font-weight:600;}
-  .banner{
-    margin:0 0 12px; padding:12px 14px; border-radius:12px; font-size:13.5px;
-    background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;
-  }
-  svg{display:block;}
 
-  /* ---------- footer backend tag ---------- */
-  .appfoot{
-    text-align:center; margin-top:18px; font-size:11px; color:var(--muted);
-    font-weight:600; letter-spacing:.02em;
+  .sheet{position:fixed; inset:0; z-index:60; display:none;}
+  .sheet.show{display:block;}
+  .sheet .backdrop{position:absolute; inset:0; background:rgba(15,23,42,.42);}
+  .sheet .panel{
+    position:absolute; left:0; right:0; bottom:0;
+    background:var(--surface); border-radius:22px 22px 0 0;
+    padding:18px 20px calc(22px + var(--safe-bottom));
+    max-height:88vh; overflow-y:auto; animation:up .25s ease both;
+    box-shadow:0 -8px 30px rgba(15,23,42,.16);
   }
-  .appfoot #backendTag{color:var(--accent-600); text-transform:uppercase;}
-
-  /* ---------- food log ---------- */
-  .log-card{margin-bottom:16px;}
-  .log-nav{display:flex; align-items:center; justify-content:space-between; gap:8px;}
-  .log-date{font-size:15px; font-weight:700; letter-spacing:-.01em; text-align:center; flex:1 1 auto;}
-  .log-arrow{
-    flex:0 0 auto; width:34px; height:34px; border-radius:10px; cursor:pointer;
-    border:1px solid var(--border); background:#fff; color:var(--text);
-    font-size:20px; line-height:1; display:grid; place-items:center; transition:background .15s, opacity .15s;
+  @keyframes up{from{transform:translateY(100%);} to{transform:none;}}
+  .grab{width:38px; height:4px; border-radius:99px; background:#dfe4ea; margin:0 auto 14px;}
+  .sheet h3{margin:0 0 4px; font-size:18px; letter-spacing:-.01em;}
+  .sheet .hint{margin:0 0 16px; font-size:12.5px; color:var(--muted);}
+  .chips{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .mchip{
+    border:1px solid var(--border); background:#fff; color:var(--text); cursor:pointer;
+    font-size:12.5px; font-weight:700; padding:10px 4px; border-radius:11px;
   }
-  .log-arrow:active{background:var(--accent-weak);}
-  .log-arrow[disabled]{opacity:.35; cursor:default;}
-  .log-total{display:flex; align-items:baseline; gap:6px; margin-top:8px;}
-  .log-total b{font-size:28px; font-weight:800; letter-spacing:-.02em;}
-  .log-total span{font-size:13px; color:var(--muted); font-weight:600;}
-  .log-list{margin-top:12px; display:flex; flex-direction:column; gap:8px;}
-  .log-empty{font-size:13px; color:var(--muted); padding:4px 0;}
-  .log-item{
-    display:flex; align-items:center; gap:10px; padding:10px 12px;
-    background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm);
+  .mchip.on{background:var(--accent-weak); color:var(--accent-600); border-color:#a7f3d0;}
+  .stepper{display:flex; align-items:center; gap:10px;}
+  .stepper button{
+    width:40px; height:40px; border-radius:11px; border:1px solid var(--border);
+    background:#fff; font-size:20px; font-weight:700; cursor:pointer; color:var(--text);
   }
-  .log-item .li-name{font-weight:600; font-size:14px; text-transform:capitalize; flex:1 1 auto; min-width:0;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .log-item .li-kcal{font-weight:700; font-size:14px; flex:0 0 auto;}
-  .log-item .li-del{
-    flex:0 0 auto; width:28px; height:28px; border-radius:8px; border:1px solid var(--border);
-    background:#fff; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; display:grid; place-items:center;
+  .stepper button:active{background:var(--accent-weak);}
+  .stepper .val{flex:1 1 auto; text-align:center; font-size:17px; font-weight:800;}
+  .total-line{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin:16px 0 4px; font-size:15px;
   }
-  .log-item .li-del:active{background:#fef2f2; color:#b91c1c;}
-
-  /* add-to-log controls on result cards */
-  .addrow{display:flex; align-items:center; gap:8px; margin-top:14px;}
-  .addbtn{
-    border:0; cursor:pointer; font-weight:700; font-size:14px; padding:10px 16px; border-radius:12px;
-    background:var(--accent-weak); color:var(--accent-600); transition:opacity .2s;
-  }
-  .addbtn:active{opacity:.7;}
-  .addbtn[disabled]{background:#f1f5f9; color:#94a3b8; cursor:default;}
-  .kcal-input{
-    flex:1 1 auto; min-width:0; font-size:15px; padding:10px 12px; border-radius:12px;
-    border:1px solid var(--border); background:#fff; color:var(--text); font-family:inherit;
-  }
-  .kcal-input:focus{outline:2px solid var(--accent); outline-offset:-1px;}
+  .total-line b{font-size:23px; font-weight:800; letter-spacing:-.02em;}
+  .sheet-actions{display:flex; gap:10px; margin-top:14px;}
+  .btn-save{flex:1 1 auto; color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent-600));
+    box-shadow:0 6px 16px rgba(16,185,129,.3);}
+  .btn-del{flex:0 0 auto; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;}
 </style>
 </head>
 <body>
   <header class="appbar">
     <div class="logo" aria-hidden="true">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><circle cx="12" cy="12" r="3.2"/></svg>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><circle cx="12" cy="12" r="3.2"/></svg>
     </div>
     <div>
       <h1>NutriScan</h1>
-      <div class="sub">Indian &amp; Tamil food · on-device</div>
+      <div class="sub" id="viewSub">Diary</div>
     </div>
   </header>
 
   <main>
     <div id="banner" class="banner" hidden></div>
 
-    <section id="logCard" class="card log-card fade">
-      <div class="log-nav">
-        <button id="logBack" class="log-arrow" type="button" aria-label="Previous day">&#8249;</button>
-        <div class="log-date" id="logDate">Today</div>
-        <button id="logFwd" class="log-arrow" type="button" aria-label="Next day">&#8250;</button>
+    <!-- ================= DIARY ================= -->
+    <section id="view-diary" class="view fade">
+      <div class="datenav">
+        <button id="dayBack" class="arrow" type="button" aria-label="Previous day">&#8249;</button>
+        <div class="d" id="dayLabel">Today</div>
+        <button id="dayFwd" class="arrow" type="button" aria-label="Next day">&#8250;</button>
       </div>
-      <div class="log-total"><b id="logTotal">0</b> <span>kcal</span></div>
-      <div id="logList" class="log-list"></div>
-    </section>
 
-    <section id="empty" class="empty fade">
-      <div class="ring">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      <div class="card">
+        <div class="summary">
+          <div class="ringwrap">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="#eef1f4" stroke-width="11"/>
+              <circle id="ringArc" cx="60" cy="60" r="52" fill="none" stroke="url(#g1)"
+                      stroke-width="11" stroke-linecap="round"
+                      transform="rotate(-90 60 60)" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+              <defs>
+                <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#059669"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="ringtxt"><b id="ringNum">0</b><span id="ringCap">Remaining</span></div>
+          </div>
+          <div class="sumrows">
+            <div class="sumrow"><span class="k">Goal</span><span class="v" id="sumGoal">2000</span></div>
+            <div class="sumrow"><span class="k">Food</span><span class="v" id="sumFood">0</span></div>
+            <div class="sumrow" id="sumRemRow"><span class="k">Remaining</span><span class="v" id="sumRem">2000</span></div>
+          </div>
+        </div>
+        <div class="macrobars" id="macroBars"></div>
       </div>
-      <h2>Scan a dish</h2>
-      <p>Point your camera at a plate of food to estimate its calories and macros.</p>
+
+      <div id="mealSections"></div>
     </section>
 
-    <section id="photoCard" class="photo fade" hidden>
-      <img id="photo" alt="Captured food" />
+    <!-- ================= SCAN ================= -->
+    <section id="view-scan" class="view fade" hidden>
+      <div class="scan-actions">
+        <button id="scanBtn" class="btn btn-primary" disabled>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          <span id="scanLabel">Loading model…</span>
+        </button>
+        <button id="uploadBtn" class="btn btn-ghost" hidden aria-label="Choose from library">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-5-5L5 21"/></svg>
+        </button>
+      </div>
+
+      <section id="empty" class="empty">
+        <div class="ring">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        </div>
+        <h2>Scan a dish</h2>
+        <p>Point your camera at a plate of food to estimate its calories and macros.</p>
+      </section>
+
+      <section id="photoCard" class="photo" hidden>
+        <img id="photo" alt="Captured food" />
+      </section>
+
+      <div id="results"></div>
     </section>
 
-    <div id="results"></div>
+    <!-- ================= PROGRESS ================= -->
+    <section id="view-progress" class="view fade" hidden>
+      <div class="card">
+        <div class="sec-title" style="margin:0 0 10px">Last 7 days</div>
+        <div class="chartwrap" id="chart"></div>
+      </div>
+      <div class="statgrid">
+        <div class="stat"><div class="v" id="statAvg">0</div><div class="l">Daily average</div></div>
+        <div class="stat"><div class="v" id="statDays">0</div><div class="l">Days logged</div></div>
+        <div class="stat"><div class="v" id="statTotal">0</div><div class="l">7-day total</div></div>
+        <div class="stat"><div class="v" id="statBest">—</div><div class="l">Highest day</div></div>
+      </div>
+    </section>
 
-    <footer class="appfoot">TF.js backend: <span id="backendTag">…</span></footer>
+    <!-- ================= SETTINGS ================= -->
+    <section id="view-settings" class="view fade" hidden>
+      <div class="card">
+        <div class="sec-title" style="margin:0 0 12px">Daily goals</div>
+        <div class="field">
+          <label for="goalKcal">Calorie goal (kcal)</label>
+          <input id="goalKcal" class="input" type="number" inputmode="numeric" min="0" placeholder="2000" />
+        </div>
+        <div class="sec-title" style="margin:0 0 8px">Macro goals (optional)</div>
+        <div class="grid3">
+          <div class="field" style="margin:0">
+            <label for="goalProtein">Protein g</label>
+            <input id="goalProtein" class="input" type="number" inputmode="numeric" min="0" />
+          </div>
+          <div class="field" style="margin:0">
+            <label for="goalCarbs">Carbs g</label>
+            <input id="goalCarbs" class="input" type="number" inputmode="numeric" min="0" />
+          </div>
+          <div class="field" style="margin:0">
+            <label for="goalFat">Fat g</label>
+            <input id="goalFat" class="input" type="number" inputmode="numeric" min="0" />
+          </div>
+        </div>
+        <button id="saveGoals" class="btn btn-primary" style="width:100%; margin-top:16px">Save goals</button>
+      </div>
+
+      <div class="card">
+        <div class="sec-title" style="margin:0 0 6px">App</div>
+        <div class="kv"><span class="k">TF.js backend</span><span class="v badge" id="backendTag">…</span></div>
+        <div class="kv"><span class="k">Dishes recognised</span><span class="v" id="labelCount">—</span></div>
+        <div class="kv"><span class="k">Nutrition source</span><span class="v">INDB (offline)</span></div>
+        <div class="kv"><span class="k">Works offline</span><span class="v">Yes</span></div>
+      </div>
+    </section>
   </main>
 
-  <div class="scanbar">
-    <button id="scanBtn" class="scan" disabled>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
-      <span id="scanLabel">Loading model…</span>
+  <!-- ================= TAB BAR ================= -->
+  <nav class="tabbar">
+    <button class="tab active" data-view="diary" type="button">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 1 4 17.5v0A2.5 2.5 0 0 1 6.5 15H20"/><path d="M8 7h8M8 11h5"/></svg>
+      <span>Diary</span>
     </button>
-    <button id="uploadBtn" class="linkbtn" hidden>Choose from library instead</button>
-  </div>
+    <button class="tab scan" data-view="scan" type="button">
+      <div class="fab">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      </div>
+      <span>Scan</span>
+    </button>
+    <button class="tab" data-view="progress" type="button">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3.6" height="7" rx="1"/><rect x="10.2" y="6" width="3.6" height="12" rx="1"/><rect x="15.4" y="14" width="3.6" height="4" rx="1"/></svg>
+      <span>Progress</span>
+    </button>
+    <button class="tab" data-view="settings" type="button">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
 
   <input id="camInput" type="file" accept="image/*" capture="environment" hidden />
   <input id="libInput" type="file" accept="image/*" hidden />
 
   <div id="overlay" class="overlay"><div style="text-align:center"><div class="spinner"></div><p>Analyzing…</p></div></div>
+
+  <div id="sheet" class="sheet">
+    <div class="backdrop" data-close="1"></div>
+    <div class="panel"><div class="grab"></div><div id="sheetBody"></div></div>
+  </div>
 
   <script src="./tf.min.js"></script>
   <script src="./tf-backend-wasm.min.js"></script>
@@ -337,6 +527,7 @@
       el("scanLabel").textContent = "Scan food";
       el("uploadBtn").hidden = false;
       el("backendTag").textContent = tf.getBackend();   // live: webgl / wasm / cpu
+      el("labelCount").textContent = labels.length;
       hideBanner();
       console.log("Model + " + labels.length + " labels loaded on '" + activeBackend + "' backend.");
     }catch(err){
@@ -363,17 +554,282 @@
       .map(i => ({ label: labels[i], conf: probs[i], nut: nutrition[labels[i]] }));
   }
 
-  // ---- rendering ----
+  // ---- shared helpers ----
   const cap = (s) => (s || "").replace(/_/g, " ");
   const round = (x) => (x == null ? null : Math.round(x));
   const hasNumber = (n) => n && n.kcal != null && n.status !== "unavailable";
   const isEstimate = (n) => n && (n.status === "estimated" || n.status === "manual");
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  function numOrNull(v){ const n = Number(v); return Number.isFinite(n) ? n : null; }
+  function rid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
+  // ================= STORAGE =================
+  const LOG_KEY = "nutriscan_log_v1";
+  const GOALS_KEY = "nutriscan_goals_v1";
+  const MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+  const DEFAULT_GOALS = { kcal: 2000, protein: null, carbs: null, fat: null };
+
+  let viewedDate = startOfDay(new Date());   // diary always opens on Today
+  let pendingMeal = null;                    // set when "Add food" is tapped on a meal
+
+  function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function keyOf(d){
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  function todayKey(){ return keyOf(new Date()); }
+  function isToday(d){ return keyOf(d) === todayKey(); }
+  function labelOf(d){
+    const diff = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+    if (diff === 0) return "Today";
+    if (diff === 1) return "Yesterday";
+    return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  // Entries are stored per-serving plus a portion multiplier:
+  //   { id, name, meal, servings, unit:{kcal,protein,fat,fibre,carb}, ts }
+  // Older flat entries ({name,kcal,protein,...}) are migrated on read: their kcal
+  // was already a single-serving total, so servings=1 and meal defaults to Snacks.
+  function normalizeEntry(e){
+    if (e && e.unit && typeof e.unit === "object"){
+      return {
+        id: e.id || rid(),
+        name: e.name || "Food",
+        meal: MEALS.indexOf(e.meal) >= 0 ? e.meal : "Snacks",
+        servings: Number(e.servings) > 0 ? Number(e.servings) : 1,
+        unit: {
+          kcal: numOrNull(e.unit.kcal), protein: numOrNull(e.unit.protein),
+          fat: numOrNull(e.unit.fat), fibre: numOrNull(e.unit.fibre), carb: numOrNull(e.unit.carb),
+        },
+        ts: e.ts || Date.now(),
+      };
+    }
+    return {
+      id: (e && e.id) || rid(),
+      name: (e && e.name) || "Food",
+      meal: e && MEALS.indexOf(e.meal) >= 0 ? e.meal : "Snacks",
+      servings: 1,
+      unit: {
+        kcal: numOrNull(e && e.kcal), protein: numOrNull(e && e.protein),
+        fat: numOrNull(e && e.fat), fibre: numOrNull(e && e.fibre), carb: numOrNull(e && e.carb),
+      },
+      ts: (e && e.ts) || Date.now(),
+    };
+  }
+
+  function loadLog(){
+    let raw = {};
+    try { raw = JSON.parse(localStorage.getItem(LOG_KEY) || "{}"); } catch { raw = {}; }
+    const out = {};
+    for (const k of Object.keys(raw)){
+      if (Array.isArray(raw[k])) out[k] = raw[k].map(normalizeEntry);
+    }
+    return out;
+  }
+  function saveLog(log){ localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+
+  function loadGoals(){
+    try {
+      const g = JSON.parse(localStorage.getItem(GOALS_KEY) || "null");
+      return g ? Object.assign({}, DEFAULT_GOALS, g) : Object.assign({}, DEFAULT_GOALS);
+    } catch { return Object.assign({}, DEFAULT_GOALS); }
+  }
+  function saveGoalsObj(g){ localStorage.setItem(GOALS_KEY, JSON.stringify(g)); }
+
+  const entryKcal = (e) => (e.unit.kcal || 0) * (e.servings || 1);
+  const entryMacro = (e, k) => (e.unit[k] == null ? 0 : e.unit[k] * (e.servings || 1));
+  function entriesFor(dateKey){ return loadLog()[dateKey] || []; }
+  function dayTotal(dateKey){ return entriesFor(dateKey).reduce((s, e) => s + entryKcal(e), 0); }
+
+  function addEntry(dateKey, entry){
+    const log = loadLog();
+    (log[dateKey] = log[dateKey] || []).push(entry);
+    saveLog(log);
+  }
+  function updateEntry(dateKey, id, patch){
+    const log = loadLog();
+    const arr = log[dateKey] || [];
+    const i = arr.findIndex(e => e.id === id);
+    if (i >= 0){ arr[i] = normalizeEntry(Object.assign({}, arr[i], patch)); saveLog(log); }
+  }
+  function deleteEntry(dateKey, id){
+    const log = loadLog();
+    if (!log[dateKey]) return;
+    log[dateKey] = log[dateKey].filter(e => e.id !== id);
+    if (!log[dateKey].length) delete log[dateKey];
+    saveLog(log);
+  }
+
+  // ================= VIEWS =================
+  function showView(name){
+    ["diary","scan","progress","settings"].forEach(v => { el("view-" + v).hidden = (v !== name); });
+    document.querySelectorAll(".tab").forEach(t =>
+      t.classList.toggle("active", t.getAttribute("data-view") === name));
+    el("viewSub").textContent = name.charAt(0).toUpperCase() + name.slice(1);
+    if (name === "diary") renderDiary();
+    if (name === "progress") renderProgress();
+    if (name === "settings") fillSettings();
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- DIARY ----------
+  const RING_C = 2 * Math.PI * 52;   // matches r="52" in the SVG
+
+  function renderDiary(){
+    const key = keyOf(viewedDate);
+    const items = entriesFor(key);
+    const goals = loadGoals();
+    const goal = Number(goals.kcal) > 0 ? Number(goals.kcal) : 0;
+    const food = items.reduce((s, e) => s + entryKcal(e), 0);
+    const remaining = goal - food;
+
+    el("dayLabel").textContent = labelOf(viewedDate);
+    el("dayFwd").disabled = isToday(viewedDate);
+
+    // ring
+    const pct = goal > 0 ? Math.min(food / goal, 1) : 0;
+    el("ringArc").setAttribute("stroke-dashoffset", String(RING_C * (1 - pct)));
+    el("ringArc").setAttribute("stroke", remaining < 0 ? "#dc2626" : "url(#g1)");
+    el("ringNum").textContent = goal > 0 ? Math.round(Math.abs(remaining)) : Math.round(food);
+    el("ringCap").textContent = goal <= 0 ? "kcal eaten" : (remaining < 0 ? "Over" : "Remaining");
+
+    el("sumGoal").textContent = goal > 0 ? Math.round(goal) : "—";
+    el("sumFood").textContent = Math.round(food);
+    el("sumRem").textContent = goal > 0 ? Math.round(remaining) : "—";
+    el("sumRemRow").classList.toggle("over", goal > 0 && remaining < 0);
+
+    // macro bars
+    const tot = {
+      protein: items.reduce((s, e) => s + entryMacro(e, "protein"), 0),
+      carb:    items.reduce((s, e) => s + entryMacro(e, "carb"), 0),
+      fat:     items.reduce((s, e) => s + entryMacro(e, "fat"), 0),
+    };
+    const mgoal = { protein: goals.protein, carb: goals.carbs, fat: goals.fat };
+    el("macroBars").innerHTML = [
+      ["Protein", "protein"], ["Carbs", "carb"], ["Fat", "fat"],
+    ].map(([nm, k]) => {
+      const g = Number(mgoal[k]) > 0 ? Number(mgoal[k]) : null;
+      const w = g ? Math.min(tot[k] / g, 1) * 100 : (tot[k] > 0 ? 100 : 0);
+      const val = g ? Math.round(tot[k]) + " / " + Math.round(g) + "g" : Math.round(tot[k]) + "g";
+      return `<div class="mb">
+        <div class="mb-top"><span class="mb-name">${nm}</span><span class="mb-val">${val}</span></div>
+        <div class="track"><div class="fill" style="width:${w}%"></div></div>
+      </div>`;
+    }).join("");
+
+    // meal sections
+    el("mealSections").innerHTML = MEALS.map(m => {
+      const mine = items.filter(e => e.meal === m);
+      const sub = mine.reduce((s, e) => s + entryKcal(e), 0);
+      const rows = mine.length
+        ? `<div class="meal-items">` + mine.map(e => {
+            const port = (e.servings && e.servings !== 1) ? `${e.servings} × ` : "";
+            return `<div class="item" data-edit="${e.id}">
+              <div class="i-main">
+                <div class="i-name">${esc(cap(e.name))}</div>
+                <div class="i-sub">${port}${Math.round(e.unit.kcal || 0)} kcal each</div>
+              </div>
+              <div class="i-kcal">${Math.round(entryKcal(e))}</div>
+            </div>`;
+          }).join("") + `</div>`
+        : `<div class="meal-empty">Nothing logged</div>`;
+      return `<div class="card">
+        <div class="meal-head"><div class="meal-name">${m}</div><div class="meal-sub">${Math.round(sub)} kcal</div></div>
+        ${rows}
+        <button class="meal-add" type="button" data-addfood="${m}">+ Add food</button>
+      </div>`;
+    }).join("");
+  }
+
+  function shiftDay(delta){
+    const d = new Date(viewedDate); d.setDate(d.getDate() + delta);
+    if (startOfDay(d) > startOfDay(new Date())) return;   // never navigate past Today
+    viewedDate = startOfDay(d);
+    renderDiary();
+  }
+
+  // ---------- PROGRESS ----------
+  function renderProgress(){
+    const days = [];
+    for (let i = 6; i >= 0; i--){
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days.push({ d: startOfDay(d), total: dayTotal(keyOf(d)) });
+    }
+    const goals = loadGoals();
+    const goal = Number(goals.kcal) > 0 ? Number(goals.kcal) : 0;
+    const max = Math.max(goal, ...days.map(x => x.total), 1);
+
+    // geometry
+    const W = 336, H = 180, padL = 8, padB = 26, padT = 12;
+    const slot = (W - padL * 2) / 7, bw = Math.min(30, slot - 12);
+    const plotH = H - padB - padT;
+
+    let bars = "";
+    days.forEach((x, i) => {
+      const h = Math.max(2, (x.total / max) * plotH);
+      const cx = padL + slot * i + slot / 2;
+      const y = padT + (plotH - h);
+      const today = isToday(x.d);
+      const fill = x.total === 0 ? "#e8ecf0" : (today ? "url(#bg1)" : "#a7e8cd");
+      bars += `<rect x="${(cx - bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="6" fill="${fill}"/>`;
+      if (x.total > 0){
+        bars += `<text x="${cx.toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle"
+                  font-size="9.5" font-weight="700" fill="#475569">${Math.round(x.total)}</text>`;
+      }
+      bars += `<text x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10.5"
+                font-weight="${today ? 800 : 600}" fill="${today ? "#059669" : "#94a3b8"}">${
+                x.d.toLocaleDateString(undefined, { weekday: "narrow" })}</text>`;
+    });
+
+    let goalLine = "";
+    if (goal > 0){
+      const gy = padT + plotH - (goal / max) * plotH;
+      goalLine = `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padL}" y2="${gy.toFixed(1)}"
+                   stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+    }
+
+    el("chart").innerHTML =
+      `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Calories over the last 7 days">
+        <defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#059669"/>
+        </linearGradient></defs>
+        ${goalLine}${bars}
+      </svg>`;
+
+    const logged = days.filter(x => x.total > 0);
+    const total = days.reduce((s, x) => s + x.total, 0);
+    const best = days.reduce((a, b) => (b.total > a.total ? b : a), days[0]);
+    el("statAvg").textContent = logged.length ? Math.round(total / logged.length) : 0;
+    el("statDays").textContent = logged.length;
+    el("statTotal").textContent = Math.round(total);
+    el("statBest").textContent = best && best.total > 0 ? Math.round(best.total) : "—";
+  }
+
+  // ---------- SETTINGS ----------
+  function fillSettings(){
+    const g = loadGoals();
+    el("goalKcal").value = g.kcal != null ? g.kcal : "";
+    el("goalProtein").value = g.protein != null ? g.protein : "";
+    el("goalCarbs").value = g.carbs != null ? g.carbs : "";
+    el("goalFat").value = g.fat != null ? g.fat : "";
+  }
+  el("saveGoals").addEventListener("click", () => {
+    saveGoalsObj({
+      kcal: numOrNull(el("goalKcal").value) || 0,
+      protein: numOrNull(el("goalProtein").value),
+      carbs: numOrNull(el("goalCarbs").value),
+      fat: numOrNull(el("goalFat").value),
+    });
+    const b = el("saveGoals");
+    b.textContent = "Saved ✓";
+    setTimeout(() => { b.textContent = "Save goals"; }, 1400);
+    renderDiary();
+  });
+
+  // ================= SCAN RESULTS =================
   function macroPill(label, val){
     const v = (val == null) ? "—" : Math.round(val) + "g";
     return `<div class="pill"><div class="v">${v}</div><div class="l">${label}</div></div>`;
   }
-
   function confChip(conf){
     const pct = Math.round(conf * 100);
     const cls = pct >= 60 ? "hi" : pct >= 30 ? "mid" : "";
@@ -386,7 +842,7 @@
     let body;
     if (hasNumber(n)){
       body = `
-        <div class="kcal"><b>${round(n.kcal)}</b><span>kcal · ${n.serving || "serving"}</span></div>
+        <div class="kcal"><b>${round(n.kcal)}</b><span>kcal · ${esc(n.serving || "serving")}</span></div>
         <div class="macros">
           ${macroPill("Protein", n.protein_g)}
           ${macroPill("Carbs", n.carb_g)}
@@ -394,17 +850,15 @@
           ${macroPill("Fibre", n.fibre_g)}
         </div>
         ${isEstimate(n) ? `<div class="estimate">⚠︎ Estimate — tap to confirm</div>` : ``}
-        <div class="addrow"><button class="addbtn" type="button" data-add="${idx}">Add to log</button></div>`;
+        <div class="addrow"><button class="addbtn" type="button" data-add="${idx}">Add to diary</button></div>`;
     } else {
-      body = `<div class="addman">No nutrition data — enter calories to log it</div>
-              <div class="addrow">
-                <input id="kcal-${idx}" class="kcal-input" type="number" inputmode="numeric" min="0" placeholder="kcal" />
-                <button class="addbtn" type="button" data-add="${idx}">Add</button>
-              </div>`;
+      // "unavailable" never gets a made-up number — the user must supply one.
+      body = `<div class="addman">No nutrition data — you'll enter the calories</div>
+              <div class="addrow"><button class="addbtn" type="button" data-add="${idx}">Add manually</button></div>`;
     }
     return `<div class="card ${isTop ? "top" : ""} ${hasNumber(n) ? "" : "unavail"} fade">
       <div class="card-head">
-        <div><div class="dish">${title}</div>${hasNumber(n) ? `<div class="serving">per ${n.serving || "serving"}</div>` : ``}</div>
+        <div><div class="dish">${esc(title)}</div>${hasNumber(n) ? `<div class="serving">per ${esc(n.serving || "serving")}</div>` : ``}</div>
         ${confChip(pred.conf)}
       </div>
       ${body}
@@ -441,104 +895,175 @@
     img.src = url;
   }
 
-  // ---- food log with date/history view (localStorage, grouped by date; offline) ----
-  const LOG_KEY = "nutriscan_log_v1";
-  let viewedDate = startOfDay(new Date());   // default view is always Today
+  // ================= SHEETS =================
+  function openSheet(html){ el("sheetBody").innerHTML = html; el("sheet").classList.add("show"); }
+  function closeSheet(){ el("sheet").classList.remove("show"); el("sheetBody").innerHTML = ""; }
 
-  function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-  function keyOf(d){
-    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  function mealChips(sel){
+    return `<div class="chips">` + MEALS.map(m =>
+      `<button type="button" class="mchip ${m === sel ? "on" : ""}" data-meal="${m}">${m}</button>`).join("") + `</div>`;
   }
-  function todayKey(){ return keyOf(new Date()); }
-  function isToday(d){ return keyOf(d) === todayKey(); }
-  function labelOf(d){
-    const diff = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
-    if (diff === 0) return "Today";
-    if (diff === 1) return "Yesterday";
-    return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  function stepperHTML(v){
+    return `<div class="stepper">
+      <button type="button" data-step="-1" aria-label="Less">−</button>
+      <div class="val" id="servVal">${v}</div>
+      <button type="button" data-step="1" aria-label="More">+</button>
+    </div>`;
   }
 
-  function loadLog(){
-    try { return JSON.parse(localStorage.getItem(LOG_KEY) || "{}"); } catch { return {}; }
-  }
-  function saveLog(log){ localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+  // sheet state
+  let sheetState = null;
 
-  function addToLog(entry){
-    const log = loadLog(), k = todayKey();
-    (log[k] = log[k] || []).push(entry);
-    saveLog(log);
-    viewedDate = startOfDay(new Date());   // logging a meal always lands you on Today
-    renderLog();
+  function openAddSheet(pred){
+    const n = pred.nut;
+    const known = hasNumber(n);
+    const name = (n && n.name) ? n.name : cap(pred.label);
+    sheetState = {
+      mode: "add",
+      name,
+      meal: pendingMeal && MEALS.indexOf(pendingMeal) >= 0 ? pendingMeal : guessMeal(),
+      servings: 1,
+      unit: {
+        kcal: known ? Math.round(n.kcal) : null,
+        protein: known ? n.protein_g : null,
+        fat: known ? n.fat_g : null,
+        fibre: known ? n.fibre_g : null,
+        carb: known ? n.carb_g : null,
+      },
+      known,
+    };
+    openSheet(sheetInner("Add to diary",
+      known ? `${esc(name)} · per ${esc(n.serving || "serving")}` :
+              `${esc(name)} · no INDB data, enter calories`));
+    syncSheet();
   }
-  function deleteFromLog(id){
-    const log = loadLog(), k = keyOf(viewedDate);   // delete from whichever day is shown
-    if (log[k]) {
-      log[k] = log[k].filter(e => e.id !== id);
-      if (!log[k].length) delete log[k];
-      saveLog(log);
-      renderLog();
+
+  function openEditSheet(id){
+    const key = keyOf(viewedDate);
+    const e = entriesFor(key).find(x => x.id === id);
+    if (!e) return;
+    sheetState = {
+      mode: "edit", id, name: e.name, meal: e.meal,
+      servings: e.servings, unit: Object.assign({}, e.unit), known: e.unit.kcal != null,
+    };
+    openSheet(sheetInner("Edit entry", esc(cap(e.name)), true));
+    syncSheet();
+  }
+
+  function sheetInner(title, hint, withDelete){
+    const s = sheetState;
+    return `
+      <h3>${title}</h3>
+      <p class="hint">${hint} · ${labelOf(viewedDate)}</p>
+
+      <div class="field"><label>Meal</label>${mealChips(s.meal)}</div>
+
+      <div class="field"><label>Calories per serving</label>
+        <input id="unitKcal" class="input" type="number" inputmode="numeric" min="0"
+               placeholder="kcal" value="${s.unit.kcal != null ? Math.round(s.unit.kcal) : ""}" />
+      </div>
+
+      <div class="field"><label>Servings</label>${stepperHTML(s.servings)}</div>
+
+      <div class="total-line"><span>Total</span><b id="totalKcal">0</b></div>
+
+      <div class="sheet-actions">
+        ${withDelete ? `<button type="button" class="btn btn-del" data-delete="1">Delete</button>` : ``}
+        <button type="button" class="btn btn-save" data-save="1">${withDelete ? "Save changes" : "Add to diary"}</button>
+      </div>`;
+  }
+
+  function syncSheet(){
+    const s = sheetState; if (!s) return;
+    const v = el("servVal"); if (v) v.textContent = s.servings;
+    const k = numOrNull(el("unitKcal") ? el("unitKcal").value : null);
+    const t = el("totalKcal");
+    if (t) t.textContent = Math.round((k || 0) * s.servings) + " kcal";
+  }
+
+  function guessMeal(){
+    const h = new Date().getHours();
+    if (h < 11) return "Breakfast";
+    if (h < 16) return "Lunch";
+    if (h < 21) return "Dinner";
+    return "Snacks";
+  }
+
+  function commitSheet(){
+    const s = sheetState; if (!s) return;
+    const perServing = numOrNull(el("unitKcal").value);
+    if (!(perServing > 0)){ el("unitKcal").focus(); return; }   // never log a blank/zero number
+    const key = keyOf(viewedDate);
+
+    if (s.mode === "add"){
+      addEntry(key, normalizeEntry({
+        id: rid(), name: s.name, meal: s.meal, servings: s.servings,
+        unit: Object.assign({}, s.unit, { kcal: perServing }), ts: Date.now(),
+      }));
+    } else {
+      updateEntry(key, s.id, {
+        meal: s.meal, servings: s.servings,
+        unit: Object.assign({}, s.unit, { kcal: perServing }),
+      });
     }
-  }
-  function shiftDay(delta){
-    const d = new Date(viewedDate); d.setDate(d.getDate() + delta);
-    if (startOfDay(d) > startOfDay(new Date())) return;   // never navigate past Today
-    viewedDate = startOfDay(d);
-    renderLog();
+    closeSheet();
+    pendingMeal = null;
+    showView("diary");
   }
 
-  function renderLog(){
-    const items = (loadLog()[keyOf(viewedDate)] || []);
-    const total = items.reduce((s, e) => s + (Number(e.kcal) || 0), 0);
-    el("logDate").textContent = labelOf(viewedDate);
-    el("logTotal").textContent = Math.round(total);
-    el("logFwd").disabled = isToday(viewedDate);   // can't go into the future
-    el("logList").innerHTML = items.length
-      ? items.map(e => `
-          <div class="log-item">
-            <span class="li-name">${cap(e.name)}</span>
-            <span class="li-kcal">${Math.round(e.kcal)} kcal</span>
-            <button class="li-del" type="button" data-del="${e.id}" aria-label="Delete">&times;</button>
-          </div>`).join("")
-      : `<div class="log-empty">No meals logged.</div>`;
-  }
+  // ================= EVENTS =================
+  // tabs
+  document.querySelectorAll(".tab").forEach(t =>
+    t.addEventListener("click", () => showView(t.getAttribute("data-view"))));
 
-  // Add-to-log from a result card
+  // diary: day nav, add-food, edit item
+  el("dayBack").addEventListener("click", () => shiftDay(-1));
+  el("dayFwd").addEventListener("click", () => shiftDay(1));
+  el("mealSections").addEventListener("click", (e) => {
+    const add = e.target.closest("[data-addfood]");
+    if (add){ pendingMeal = add.getAttribute("data-addfood"); showView("scan"); return; }
+    const ed = e.target.closest("[data-edit]");
+    if (ed) openEditSheet(ed.getAttribute("data-edit"));
+  });
+
+  // scan results -> add sheet
   el("results").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-add]");
-    if (!btn || btn.disabled) return;
+    if (!btn) return;
     const p = currentPreds[+btn.getAttribute("data-add")];
-    if (!p) return;
-    const n = p.nut;
-    const name = (n && n.name) ? n.name : cap(p.label);
-    let kcal, protein = null, fat = null, fibre = null;
+    if (p) openAddSheet(p);
+  });
 
-    if (hasNumber(n)) {
-      kcal = Math.round(n.kcal);
-      protein = n.protein_g; fat = n.fat_g; fibre = n.fibre_g;
-    } else {
-      const input = el("kcal-" + (+btn.getAttribute("data-add")));
-      const v = input ? parseFloat(input.value) : NaN;
-      if (!(v > 0)) { input && input.focus(); return; }   // require a number for unavailable dishes
-      kcal = Math.round(v);
+  // sheet interactions
+  el("sheet").addEventListener("click", (e) => {
+    if (e.target.closest("[data-close]")) { closeSheet(); return; }
+    const chip = e.target.closest("[data-meal]");
+    if (chip && sheetState){
+      sheetState.meal = chip.getAttribute("data-meal");
+      el("sheetBody").querySelectorAll(".mchip").forEach(c =>
+        c.classList.toggle("on", c.getAttribute("data-meal") === sheetState.meal));
+      return;
     }
-    addToLog({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name, kcal, protein, fat, fibre, ts: Date.now(),
-    });
-    btn.textContent = "Added ✓";
-    btn.disabled = true;
+    const step = e.target.closest("[data-step]");
+    if (step && sheetState){
+      const d = Number(step.getAttribute("data-step")) * 0.5;
+      sheetState.servings = Math.max(0.5, Math.round((sheetState.servings + d) * 2) / 2);
+      syncSheet();
+      return;
+    }
+    if (e.target.closest("[data-save]")) { commitSheet(); return; }
+    const del = e.target.closest("[data-delete]");
+    if (del && sheetState && sheetState.mode === "edit"){
+      deleteEntry(keyOf(viewedDate), sheetState.id);
+      closeSheet();
+      renderDiary();
+    }
+  });
+  el("sheet").addEventListener("input", (e) => {
+    if (e.target && e.target.id === "unitKcal") syncSheet();
   });
 
-  // Delete from the currently viewed day's log
-  el("logList").addEventListener("click", (e) => {
-    const del = e.target.closest("[data-del]");
-    if (del) deleteFromLog(del.getAttribute("data-del"));
-  });
-
-  // Day navigation
-  el("logBack").addEventListener("click", () => shiftDay(-1));
-  el("logFwd").addEventListener("click", () => shiftDay(1));
-
+  // scan inputs
   el("scanBtn").addEventListener("click", () => { if (!el("scanBtn").disabled) el("camInput").click(); });
   el("uploadBtn").addEventListener("click", () => el("libInput").click());
   el("camInput").addEventListener("change", (e) => handleFile(e.target.files[0]));
@@ -553,7 +1078,10 @@
     });
   }
 
-  renderLog();
+  // Migrate any legacy flat entries into the new shape once, on boot.
+  saveLog(loadLog());
+
+  showView("diary");
   init();
   </script>
 </body>
