@@ -1041,6 +1041,19 @@
     return out;
   }
 
+  // Marks every existing entry for upload. Needed once per account, because a
+  // diary written before sync existed (or copied across on sign-in) has
+  // dirty=false and would otherwise never be pushed at all.
+  function markAllDirty(){
+    const log = loadLog();
+    let n = 0;
+    Object.keys(log).forEach(function(d){
+      log[d].forEach(function(e){ if (!e.dirty){ e.dirty = true; n++; } });
+    });
+    if (n) saveLog(log);
+    return n;
+  }
+
   // Called after a successful push so those entries stop being re-sent.
   function markClean(clientIds){
     const set = {};
@@ -1941,8 +1954,17 @@
       const uid = session && session.user ? session.user.id : null;
       if (!uid) throw new Error("no active session");
 
+      // First sync for this account: queue the diary that already exists locally.
+      const backfillKey = "nutriscan_backfill_v1::" + uid;
+      if (localStorage.getItem(backfillKey) === null){
+        const queued = markAllDirty();
+        localStorage.setItem(backfillKey, "1");
+        if (queued) console.log("Queued " + queued + " existing entries for first upload.");
+      }
+
       // push first, so a pull can never overwrite unsent work
       const rows = outboxRows(uid);
+      console.log("Sync: pushing " + rows.length + " row(s) as user " + uid);
       if (rows.length){
         const up = await sb.from("food_log").upsert(rows, { onConflict: "user_id,client_id" });
         if (up.error) throw up.error;
@@ -1961,8 +1983,15 @@
       }
       syncStatusIdle();
     }catch(err){
-      console.warn("Sync failed:", err && err.message);
-      setSyncStatus("Sync error — " + pendingSyncCount() + " pending");
+      const msg = (err && err.message) || String(err);
+      console.warn("Sync failed:", msg, err);
+      if (/schema cache|does not exist|PGRST204/i.test(msg)){
+        setSyncStatus("Sync error: table is missing columns");
+      } else if (/row-level security|42501/i.test(msg)){
+        setSyncStatus("Sync error: rejected by RLS");
+      } else {
+        setSyncStatus("Sync error — " + pendingSyncCount() + " pending");
+      }
     }finally{
       syncing = false;
     }
