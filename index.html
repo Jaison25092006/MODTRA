@@ -443,14 +443,14 @@
       <div class="login-feats">
         <div class="login-feat"><span class="tick">✓</span> Scan a dish to get calories &amp; macros</div>
         <div class="login-feat"><span class="tick">✓</span> Search 1,000+ Indian foods</div>
-        <div class="login-feat"><span class="tick">✓</span> Works offline — nothing leaves your device</div>
+        <div class="login-feat"><span class="tick">✓</span> Works offline, syncs when you're back online</div>
       </div>
 
       <div id="loginBtn" class="login-gbtn"></div>
       <div id="loginNote" class="login-note"></div>
       <button id="guestBtn" class="login-guest" type="button">Continue without an account</button>
 
-      <div class="login-legal">Your diary is stored only on this device.<br>No data is uploaded.</div>
+      <div class="login-legal">Sign in to sync your diary to your own private account.<br>Guest mode keeps everything on this device only.</div>
     </div>
   </div>
 
@@ -601,6 +601,7 @@
 
       <div class="card">
         <div class="sec-title" style="margin:0 0 6px">App</div>
+        <div class="kv"><span class="k">Cloud sync</span><span class="v" id="syncTag">Off</span></div>
         <div class="kv"><span class="k">TF.js backend</span><span class="v badge" id="backendTag">…</span></div>
         <div class="kv"><span class="k">Dishes recognised</span><span class="v" id="labelCount">—</span></div>
         <div class="kv"><span class="k">Nutrition source</span><span class="v">INDB (offline)</span></div>
@@ -687,6 +688,7 @@
   })();
   </script>
 
+  <script src="./supabase.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./tf.min.js"></script>
   <script src="./tf-backend-wasm.min.js"></script>
@@ -810,6 +812,13 @@
   const LOG_KEY = "nutriscan_log_v1";
   const GOALS_KEY = "nutriscan_goals_v1";
   const USER_KEY = "nutriscan_user_v1";
+
+  // Supabase (Stage 1). With SUPABASE_ANON_KEY blank, syncEnabled() is false and
+  // nothing touches the network — identical behaviour to the offline-only app.
+  const SUPABASE_URL = "https://dmnyujbnhajonipbicxc.supabase.co";
+  const SUPABASE_ANON_KEY = "";          // <-- paste the anon / publishable key
+  function syncConfigured(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
+  function syncEnabled(){ return syncConfigured() && !!(currentUser && currentUser.supabase); }
   const MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
   // Signed-in Google account, or null for "guest". Each account gets its own
@@ -840,6 +849,10 @@
   //   { id, name, meal, servings, unit:{kcal,protein,fat,fibre,carb}, ts }
   // Older flat entries ({name,kcal,protein,...}) are migrated on read: their kcal
   // was already a single-serving total, so servings=1 and meal defaults to Snacks.
+  // updatedAt/dirty/deleted exist for cloud sync: dirty marks "not yet pushed",
+  // and deleted is a tombstone so a removal can propagate to other devices
+  // instead of being resurrected by the next pull. Reads filter tombstones out,
+  // so the UI is unaffected when sync is off.
   function normalizeEntry(e){
     if (e && e.unit && typeof e.unit === "object"){
       return {
@@ -852,6 +865,9 @@
           fat: numOrNull(e.unit.fat), fibre: numOrNull(e.unit.fibre), carb: numOrNull(e.unit.carb),
         },
         ts: e.ts || Date.now(),
+        updatedAt: Number(e.updatedAt) > 0 ? Number(e.updatedAt) : (e.ts || Date.now()),
+        dirty: !!e.dirty,
+        deleted: !!e.deleted,
       };
     }
     return {
@@ -864,6 +880,9 @@
         fat: numOrNull(e && e.fat), fibre: numOrNull(e && e.fibre), carb: numOrNull(e && e.carb),
       },
       ts: (e && e.ts) || Date.now(),
+      updatedAt: (e && e.ts) || Date.now(),
+      dirty: false,
+      deleted: false,
     };
   }
 
@@ -888,25 +907,142 @@
 
   const entryKcal = (e) => (e.unit.kcal || 0) * (e.servings || 1);
   const entryMacro = (e, k) => (e.unit[k] == null ? 0 : e.unit[k] * (e.servings || 1));
-  function entriesFor(dateKey){ return loadLog()[dateKey] || []; }
+  function entriesFor(dateKey){
+    return (loadLog()[dateKey] || []).filter(function(e){ return !e.deleted; });
+  }
   function dayTotal(dateKey){ return entriesFor(dateKey).reduce((s, e) => s + entryKcal(e), 0); }
 
   function addEntry(dateKey, entry){
     const log = loadLog();
+    entry.updatedAt = Date.now();
+    entry.dirty = true;
     (log[dateKey] = log[dateKey] || []).push(entry);
     saveLog(log);
+    if (typeof scheduleSync === "function") scheduleSync();
   }
   function updateEntry(dateKey, id, patch){
     const log = loadLog();
     const arr = log[dateKey] || [];
     const i = arr.findIndex(e => e.id === id);
-    if (i >= 0){ arr[i] = normalizeEntry(Object.assign({}, arr[i], patch)); saveLog(log); }
+    if (i >= 0){
+      arr[i] = normalizeEntry(Object.assign({}, arr[i], patch,
+        { updatedAt: Date.now(), dirty: true }));
+      saveLog(log);
+      if (typeof scheduleSync === "function") scheduleSync();
+    }
   }
   function deleteEntry(dateKey, id){
     const log = loadLog();
     if (!log[dateKey]) return;
-    log[dateKey] = log[dateKey].filter(e => e.id !== id);
+    const i = log[dateKey].findIndex(e => e.id === id);
+    if (i < 0) return;
+    if (log[dateKey][i].dirty && !syncEnabled()){
+      log[dateKey].splice(i, 1);          // never synced and no cloud: just drop it
+    } else {
+      log[dateKey][i].deleted = true;     // tombstone for the next push
+      log[dateKey][i].dirty = true;
+      log[dateKey][i].updatedAt = Date.now();
+    }
     if (!log[dateKey].length) delete log[dateKey];
+    saveLog(log);
+    if (typeof scheduleSync === "function") scheduleSync();
+  }
+  function pendingSyncCount(){
+    const log = loadLog();
+    let n = 0;
+    Object.keys(log).forEach(function(d){
+      log[d].forEach(function(e){ if (e.dirty) n++; });
+    });
+    return n;
+  }
+
+  // ---- cloud sync mapping (Supabase) ----
+  // Local entries store per-serving values plus a portion multiplier; the
+  // food_log table mirrors that exactly, keyed by (user_id, client_id) so a
+  // repeated push updates instead of duplicating.
+  function entryToRow(dateKey, e, userId){
+    return {
+      user_id: userId,
+      client_id: e.id,
+      date: dateKey,
+      meal: e.meal,
+      dish_name: e.name,
+      portion: e.servings,
+      kcal: e.unit.kcal, protein: e.unit.protein, fat: e.unit.fat,
+      fibre: e.unit.fibre, carb: e.unit.carb,
+      deleted: !!e.deleted,
+      updated_at: new Date(e.updatedAt || Date.now()).toISOString(),
+    };
+  }
+
+  function rowToEntry(row){
+    return normalizeEntry({
+      id: row.client_id,
+      name: row.dish_name,
+      meal: row.meal,
+      servings: Number(row.portion) > 0 ? Number(row.portion) : 1,
+      unit: {
+        kcal: numOrNull(row.kcal), protein: numOrNull(row.protein), fat: numOrNull(row.fat),
+        fibre: numOrNull(row.fibre), carb: numOrNull(row.carb),
+      },
+      ts: row.created_at ? Date.parse(row.created_at) : Date.now(),
+      updatedAt: row.updated_at ? Date.parse(row.updated_at) : Date.now(),
+      deleted: !!row.deleted,
+      dirty: false,                       // it came from the server, so it is clean
+    });
+  }
+
+  // Last-write-wins on updatedAt. A local row that is still dirty and strictly
+  // newer than the server copy is kept, so a pull can never discard an edit that
+  // has not been pushed yet.
+  function mergeRemoteRows(rows){
+    const log = loadLog();
+    let applied = 0, kept = 0;
+    for (let i = 0; i < rows.length; i++){
+      const incoming = rowToEntry(rows[i]);
+      const dateKey = rows[i].date;
+      if (!log[dateKey]) log[dateKey] = [];
+      const arr = log[dateKey];
+      const j = arr.findIndex(function(x){ return x.id === incoming.id; });
+      if (j < 0){
+        arr.push(incoming);
+        applied++;
+      } else if (arr[j].dirty && arr[j].updatedAt > incoming.updatedAt){
+        kept++;                            // local edit is newer; leave it to be pushed
+      } else if (incoming.updatedAt >= arr[j].updatedAt){
+        arr[j] = incoming;
+        applied++;
+      } else {
+        kept++;
+      }
+    }
+    saveLog(log);
+    return { applied: applied, kept: kept };
+  }
+
+  // Everything still dirty, flattened for a single upsert.
+  function outboxRows(userId){
+    const log = loadLog(), out = [];
+    Object.keys(log).forEach(function(d){
+      log[d].forEach(function(e){ if (e.dirty) out.push(entryToRow(d, e, userId)); });
+    });
+    return out;
+  }
+
+  // Called after a successful push so those entries stop being re-sent.
+  function markClean(clientIds){
+    const set = {};
+    clientIds.forEach(function(id){ set[id] = 1; });
+    const log = loadLog();
+    Object.keys(log).forEach(function(d){
+      log[d] = log[d].filter(function(e){
+        if (!set[e.id]) return true;
+        if (e.deleted) return false;       // tombstone confirmed: drop it locally
+        e.dirty = false;
+        return true;
+      });
+      if (!log[d].length) delete log[d];
+    });
     saveLog(log);
   }
 
@@ -968,7 +1104,14 @@
       account: currentUser ? (currentUser.email || currentUser.sub) : "guest",
       goals: loadGoals(),
       weights: loadWeights(),
-      log: loadLog(),
+      log: (function(){
+        const raw = loadLog(), out = {};
+        Object.keys(raw).forEach(function(d){
+          const live = raw[d].filter(function(e){ return !e.deleted; });
+          if (live.length) out[d] = live;
+        });
+        return out;
+      })(),
     };
   }
 
@@ -1028,7 +1171,7 @@
     el("viewSub").textContent = name.charAt(0).toUpperCase() + name.slice(1);
     if (name === "diary") renderDiary();
     if (name === "progress"){ renderProgress(); renderWeight(); }
-    if (name === "settings"){ fillSettings(); renderAccount(); }
+    if (name === "settings"){ fillSettings(); renderAccount(); syncStatusIdle(); }
     window.scrollTo(0, 0);
   }
 
@@ -1606,32 +1749,50 @@
     else localStorage.removeItem(USER_KEY);
   }
 
-  function onGoogleCredential(resp){
-    const p = decodeJwtPayload(resp && resp.credential);
+  async function onGoogleCredential(resp){
+    const cred = resp && resp.credential;
+    const p = decodeJwtPayload(cred);
     if (!p || !p.sub){ showBanner("Sign-in failed", "Could not read the Google account details."); return; }
-    const user = {
+    let user = {
       sub: p.sub, name: p.name || p.email || "Account",
-      email: p.email || "", picture: p.picture || "",
+      email: p.email || "", picture: p.picture || "", supabase: false,
     };
-    // First sign-in on this device inherits whatever was logged as guest, so a
-    // diary never appears to vanish. Later sign-ins use the account's own data.
-    const accLog = LOG_KEY + "::" + user.sub;
-    if (localStorage.getItem(accLog) === null){
-      const guestLog = localStorage.getItem(LOG_KEY);
-      if (guestLog) localStorage.setItem(accLog, guestLog);
-      const accGoals = GOALS_KEY + "::" + user.sub;
-      const guestGoals = localStorage.getItem(GOALS_KEY);
-      if (guestGoals && localStorage.getItem(accGoals) === null) localStorage.setItem(accGoals, guestGoals);
+
+    // Trade the Google ID token for a Supabase session. RLS needs a real
+    // auth.uid(), so without this the diary can only ever be local.
+    if (syncConfigured() && sb){
+      try{
+        const res = await sb.auth.signInWithIdToken({ provider: "google", token: cred });
+        if (res.error) throw res.error;
+        const u = res.data && res.data.user;
+        if (!u) throw new Error("no user returned");
+        const meta = u.user_metadata || {};
+        user = {
+          sub: u.id,
+          name: meta.full_name || meta.name || p.name || u.email || "Account",
+          email: u.email || p.email || "",
+          picture: meta.avatar_url || meta.picture || p.picture || "",
+          supabase: true,
+        };
+        adoptAccount(user, p.sub);
+        refreshGate();
+        renderAccount();
+        showView(currentView);
+        syncNow();
+        return;
+      }catch(err){
+        showBanner("Cloud sign-in failed",
+          (err && err.message ? err.message + ". " : "") + "Signed in locally instead — your diary stays on this device.");
+      }
     }
-    currentUser = user;
-    saveUser(user);
-    setGuest(false);
+    adoptAccount(user, null);
     refreshGate();
     renderAccount();
     showView(currentView);
   }
 
   function signOutGoogle(){
+    try{ if (sb) sb.auth.signOut(); }catch(_){}
     try{
       if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
     }catch(_){}
@@ -1720,6 +1881,127 @@
         refreshGate();
       }
     }, 250);
+  }
+
+  // ================= CLOUD SYNC (Supabase) =================
+  // Offline-first: localStorage is the source of truth for every read, so the UI
+  // never waits on the network. Sync pushes anything dirty, then pulls rows newer
+  // than the last successful pull, merging last-write-wins.
+  let sb = null, syncing = false, syncTimer = null;
+  const LASTPULL_KEY = "nutriscan_lastpull_v1";
+  function lastPullKey(){ return LASTPULL_KEY + (currentUser ? "::" + currentUser.sub : ""); }
+
+  function initSupabase(){
+    if (!syncConfigured()) return;
+    if (!(window.supabase && window.supabase.createClient)){
+      console.warn("supabase.js not loaded — running offline-only.");
+      return;
+    }
+    try{
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+      });
+    }catch(err){
+      console.warn("Supabase client failed:", err && err.message);
+    }
+  }
+
+  function setSyncStatus(text){
+    const t = el("syncTag");
+    if (t) t.textContent = text;
+  }
+
+  function syncStatusIdle(){
+    if (!syncConfigured()) { setSyncStatus("Not configured"); return; }
+    if (!currentUser || !currentUser.supabase) { setSyncStatus("Off (local only)"); return; }
+    const pending = pendingSyncCount();
+    setSyncStatus(pending ? pending + " pending" : (navigator.onLine ? "Synced" : "Offline"));
+  }
+
+  async function syncNow(){
+    if (!syncEnabled() || !sb || syncing) return;
+    if (!navigator.onLine){ syncStatusIdle(); return; }
+    syncing = true;
+    setSyncStatus("Syncing…");
+    try{
+      const got = await sb.auth.getSession();
+      const session = got && got.data ? got.data.session : null;
+      const uid = session && session.user ? session.user.id : null;
+      if (!uid) throw new Error("no active session");
+
+      // push first, so a pull can never overwrite unsent work
+      const rows = outboxRows(uid);
+      if (rows.length){
+        const up = await sb.from("food_log").upsert(rows, { onConflict: "user_id,client_id" });
+        if (up.error) throw up.error;
+        markClean(rows.map(function(r){ return r.client_id; }));
+      }
+
+      // pull only what changed since last time (RLS limits this to our own rows)
+      const since = localStorage.getItem(lastPullKey()) || "1970-01-01T00:00:00.000Z";
+      const down = await sb.from("food_log").select("*")
+        .gt("updated_at", since).order("updated_at", { ascending: true });
+      if (down.error) throw down.error;
+      if (down.data && down.data.length){
+        mergeRemoteRows(down.data);
+        localStorage.setItem(lastPullKey(), down.data[down.data.length - 1].updated_at);
+        renderDiary();
+      }
+      syncStatusIdle();
+    }catch(err){
+      console.warn("Sync failed:", err && err.message);
+      setSyncStatus("Sync error — " + pendingSyncCount() + " pending");
+    }finally{
+      syncing = false;
+    }
+  }
+
+  // Debounced so a burst of edits results in one round trip.
+  function scheduleSync(){
+    if (!syncEnabled()) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(syncNow, 1500);
+  }
+
+  // Adopt an account and carry existing data onto its keys, so signing in never
+  // looks like the diary vanished. Prefers data stored under the old Google-sub
+  // key, then guest data.
+  function adoptAccount(user, googleSub){
+    const alt = (googleSub && googleSub !== user.sub) ? googleSub : null;
+    [[LOG_KEY, null], [GOALS_KEY, null], [WEIGHT_KEY, null]].forEach(function(pair){
+      const base = pair[0], target = base + "::" + user.sub;
+      if (localStorage.getItem(target) !== null) return;      // already has its own
+      const prior = alt ? localStorage.getItem(base + "::" + alt) : null;
+      const src = (prior !== null) ? prior : localStorage.getItem(base);
+      if (src !== null) localStorage.setItem(target, src);
+    });
+    currentUser = user;
+    saveUser(user);
+    setGuest(false);
+  }
+
+  async function restoreSupabaseSession(){
+    if (!sb) return false;
+    try{
+      const got = await sb.auth.getSession();
+      const session = got && got.data ? got.data.session : null;
+      if (!session || !session.user) return false;
+      const u = session.user;
+      const meta = u.user_metadata || {};
+      adoptAccount({
+        sub: u.id, name: meta.full_name || meta.name || u.email || "Account",
+        email: u.email || "", picture: meta.avatar_url || meta.picture || "",
+        supabase: true,
+      }, null);
+      renderAccount();
+      refreshGate();
+      showView(currentView);
+      syncNow();
+      return true;
+    }catch(err){
+      console.warn("Session restore failed:", err && err.message);
+      return false;
+    }
   }
 
   // ================= MANUAL SEARCH =================
@@ -2030,7 +2312,10 @@
   // Migrate any legacy flat entries into the new shape once, on boot.
   saveLog(loadLog());
 
+  initSupabase();
   initGoogle();
+  restoreSupabaseSession();
+  window.addEventListener("online", syncNow);
   showView("diary");
   init();
   </script>

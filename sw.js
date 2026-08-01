@@ -3,7 +3,7 @@
    (e.g. after re-exporting the model) so clients pick up the new files. */
 "use strict";
 
-const CACHE = "nutriscan-v13";
+const CACHE = "nutriscan-v14";
 
 // Files that change whenever the app or model is re-deployed. These are served
 // network-first (cache only as an offline fallback) so a stale copy in an old
@@ -20,6 +20,7 @@ const ASSETS = [
   "./index.html",
   "./manifest.json",
   "./tf.min.js",
+  "./supabase.js",
   "./tf-backend-wasm.min.js",
   "./tfjs-backend-wasm.wasm",
   "./tfjs-backend-wasm-simd.wasm",
