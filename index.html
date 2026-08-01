@@ -249,6 +249,30 @@
   @keyframes spin{to{transform:rotate(360deg);}}
   .overlay p{margin-top:14px; font-size:14px; color:var(--muted); font-weight:600;}
 
+  /* ---------- food search ---------- */
+  .results-list{
+    margin-top:12px; display:flex; flex-direction:column; gap:6px;
+    max-height:44vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  }
+  .fitem{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left; cursor:pointer;
+    padding:11px 12px; background:#f8fafc; border:1px solid var(--border);
+    border-radius:var(--radius-sm); font-family:inherit; color:var(--text);
+  }
+  .fitem:active{background:var(--accent-weak);}
+  .fitem .f-main{flex:1 1 auto; min-width:0;}
+  .fitem .f-name{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .fitem .f-sub{font-size:11.5px; color:var(--muted);}
+  .fitem .f-kcal{font-weight:700; font-size:14px; flex:0 0 auto; text-align:right;}
+  .fitem .f-kcal small{display:block; font-weight:600; color:var(--muted); font-size:10px;}
+  .srow{display:flex; gap:8px; margin-top:10px;}
+  .linkish{
+    flex:1 1 auto; background:#fff; border:1px solid var(--border); color:var(--accent-600);
+    font-weight:700; font-size:13px; padding:10px 8px; border-radius:11px; cursor:pointer;
+  }
+  .linkish:active{background:var(--accent-weak);}
+  .nores{font-size:13px; color:var(--muted); padding:12px 2px;}
+
   /* ---------- live camera ---------- */
   .cam{position:fixed; inset:0; z-index:70; display:none; background:#000;}
   .cam.show{display:block;}
@@ -371,6 +395,10 @@
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-5-5L5 21"/></svg>
         </button>
       </div>
+
+      <button id="searchBtn" class="linkish" type="button" style="width:100%; margin-bottom:14px">
+        Or search the food list
+      </button>
 
       <section id="empty" class="empty">
         <div class="ring">
@@ -522,10 +550,11 @@
   const MODEL_URL = "./web_model/model.json";
   const LABELS_URL = "./labels.txt";
   const NUTRITION_URL = "./label_nutrition.json";
+  const FOODS_URL = "./foods.json";        // full INDB list for manual search
   const INPUT_SIZE = 224;
 
   const el = (id) => document.getElementById(id);
-  let model = null, labels = [], nutrition = {}, currentPreds = [];
+  let model = null, labels = [], nutrition = {}, currentPreds = [], foods = [];
 
   function showBanner(title, detail){
     const b = el("banner");
@@ -1097,6 +1126,10 @@
       <h3>${title}</h3>
       <p class="hint">${hint} · ${labelOf(viewedDate)}</p>
 
+      ${s.editableName ? `<div class="field"><label>Food name</label>
+        <input id="foodName" class="input" type="text" placeholder="e.g. Filter coffee"
+               value="${esc(s.name || "")}" /></div>` : ``}
+
       <div class="field"><label>Meal</label>${mealChips(s.meal)}</div>
 
       <div class="field"><label>Calories per serving</label>
@@ -1132,13 +1165,16 @@
 
   function commitSheet(){
     const s = sheetState; if (!s) return;
+    const nameField = el("foodName");
+    const name = nameField ? nameField.value.trim() : s.name;
+    if (nameField && !name){ nameField.focus(); return; }
     const perServing = numOrNull(el("unitKcal").value);
     if (!(perServing > 0)){ el("unitKcal").focus(); return; }   // never log a blank/zero number
     const key = keyOf(viewedDate);
 
     if (s.mode === "add"){
       addEntry(key, normalizeEntry({
-        id: rid(), name: s.name, meal: s.meal, servings: s.servings,
+        id: rid(), name: name, meal: s.meal, servings: s.servings,
         unit: Object.assign({}, s.unit, { kcal: perServing }), ts: Date.now(),
       }));
     } else {
@@ -1152,6 +1188,96 @@
     showView("diary");
   }
 
+  // ================= MANUAL SEARCH =================
+  // Searches the whole INDB list (foods.json), not just the 95 dishes the model
+  // knows. Names include the regional spellings INDB keeps in brackets, so
+  // "thayir saadam" finds curd rice.
+  let searchMeal = null, searchResults = [];
+
+  function searchFoods(q, limit){
+    const terms = String(q).toLowerCase().split(/\s+/).filter(Boolean);
+    const scored = [];
+    for (let i = 0; i < foods.length; i++){
+      const name = foods[i].n.toLowerCase();
+      let ok = true;
+      for (let t = 0; t < terms.length; t++){
+        if (name.indexOf(terms[t]) === -1){ ok = false; break; }
+      }
+      if (!ok) continue;
+      // prefer names that START with the query, then shorter names
+      const starts = terms.length && name.indexOf(terms[0]) === 0 ? 0 : 1;
+      scored.push({ f: foods[i], s: starts * 1000 + name.length });
+      if (scored.length > 600) break;
+    }
+    scored.sort((a, b) => a.s - b.s);
+    return scored.slice(0, limit).map(x => x.f);
+  }
+
+  function renderFoodResults(q){
+    const box = el("foodResults");
+    if (!box) return;
+    if (!foods.length){
+      box.innerHTML = `<div class="nores">Food list still loading…</div>`;
+      return;
+    }
+    searchResults = q.trim() ? searchFoods(q, 40) : foods.slice(0, 25);
+    if (!searchResults.length){
+      box.innerHTML = `<div class="nores">No match for “${esc(q)}”. Use “Create custom food” below.</div>`;
+      return;
+    }
+    box.innerHTML = searchResults.map((f, i) => {
+      const kcal = f.k != null
+        ? `${Math.round(f.k)}<small>kcal</small>`
+        : `—<small>add kcal</small>`;
+      const sub = (f.u ? "per " + esc(f.u) : "per serving") +
+        (f.s === "estimated" ? " · estimate" : "");
+      return `<button type="button" class="fitem" data-food="${i}">
+        <div class="f-main"><div class="f-name">${esc(f.n)}</div><div class="f-sub">${sub}</div></div>
+        <div class="f-kcal">${kcal}</div>
+      </button>`;
+    }).join("");
+  }
+
+  function openSearchSheet(meal){
+    searchMeal = MEALS.indexOf(meal) >= 0 ? meal : guessMeal();
+    openSheet(`
+      <h3>Add food</h3>
+      <p class="hint">${searchMeal} · ${labelOf(viewedDate)}</p>
+      <input id="foodSearch" class="input" type="search" autocomplete="off"
+             placeholder="Search foods (e.g. dosa, thayir saadam)…" />
+      <div class="srow">
+        <button type="button" class="linkish" data-scaninstead="1">📷 Scan a photo</button>
+        <button type="button" class="linkish" data-custom="1">+ Custom food</button>
+      </div>
+      <div id="foodResults" class="results-list"></div>
+    `);
+    renderFoodResults("");
+    const inp = el("foodSearch");
+    if (inp) { try { inp.focus(); } catch (_) {} }
+  }
+
+  function openAddSheetFromFood(food){
+    sheetState = {
+      mode: "add", name: food.n,
+      meal: searchMeal || guessMeal(), servings: 1,
+      unit: { kcal: food.k, protein: food.p, fat: food.f, fibre: food.b, carb: food.c },
+      known: food.k != null,
+    };
+    openSheet(sheetInner("Add to diary",
+      esc(food.n) + (food.u ? " · per " + esc(food.u) : "")));
+    syncSheet();
+  }
+
+  function openCustomSheet(){
+    sheetState = {
+      mode: "add", name: "", meal: searchMeal || guessMeal(), servings: 1,
+      unit: { kcal: null, protein: null, fat: null, fibre: null, carb: null },
+      known: false, editableName: true,
+    };
+    openSheet(sheetInner("Custom food", "Not in the list — enter it yourself"));
+    syncSheet();
+  }
+
   // ================= EVENTS =================
   // tabs
   document.querySelectorAll(".tab").forEach(t =>
@@ -1162,7 +1288,11 @@
   el("dayFwd").addEventListener("click", () => shiftDay(1));
   el("mealSections").addEventListener("click", (e) => {
     const add = e.target.closest("[data-addfood]");
-    if (add){ pendingMeal = add.getAttribute("data-addfood"); showView("scan"); return; }
+    if (add){
+      pendingMeal = add.getAttribute("data-addfood");
+      openSearchSheet(pendingMeal);      // manual search first; scanning is one tap away
+      return;
+    }
     const ed = e.target.closest("[data-edit]");
     if (ed) openEditSheet(ed.getAttribute("data-edit"));
   });
@@ -1178,6 +1308,17 @@
   // sheet interactions
   el("sheet").addEventListener("click", (e) => {
     if (e.target.closest("[data-close]")) { closeSheet(); return; }
+
+    // --- search sheet ---
+    const pick = e.target.closest("[data-food]");
+    if (pick){
+      const f = searchResults[+pick.getAttribute("data-food")];
+      if (f) openAddSheetFromFood(f);
+      return;
+    }
+    if (e.target.closest("[data-custom]")) { openCustomSheet(); return; }
+    if (e.target.closest("[data-scaninstead]")) { closeSheet(); showView("scan"); return; }
+
     const chip = e.target.closest("[data-meal]");
     if (chip && sheetState){
       sheetState.meal = chip.getAttribute("data-meal");
@@ -1201,12 +1342,15 @@
     }
   });
   el("sheet").addEventListener("input", (e) => {
-    if (e.target && e.target.id === "unitKcal") syncSheet();
+    if (!e.target) return;
+    if (e.target.id === "unitKcal") syncSheet();
+    if (e.target.id === "foodSearch") renderFoodResults(e.target.value);
   });
 
   // scan inputs: "Scan food" opens the live camera, the image button opens the
   // photo library. camInput is only reached as a camera fallback.
   el("scanBtn").addEventListener("click", scanTapped);
+  el("searchBtn").addEventListener("click", () => openSearchSheet(pendingMeal || guessMeal()));
   el("uploadBtn").addEventListener("click", () => el("libInput").click());
   el("camShot").addEventListener("click", takePhoto);
   el("camCancel").addEventListener("click", closeCamera);
@@ -1234,6 +1378,16 @@
         .catch((e) => console.warn("Service worker registration failed:", e));
     });
   }
+
+  // The food list powers manual search, which must work even when the model is
+  // still downloading or failed — so load it separately from init().
+  fetch(FOODS_URL)
+    .then(function(r){ if (!r.ok) throw new Error("foods.json (" + r.status + ")"); return r.json(); })
+    .then(function(list){
+      foods = Array.isArray(list) ? list : [];
+      console.log("Food list loaded: " + foods.length + " foods.");
+    })
+    .catch(function(e){ console.warn("Food list unavailable:", e.message); });
 
   // Migrate any legacy flat entries into the new shape once, on boot.
   saveLog(loadLog());

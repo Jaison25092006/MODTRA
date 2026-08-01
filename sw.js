@@ -3,14 +3,14 @@
    (e.g. after re-exporting the model) so clients pick up the new files. */
 "use strict";
 
-const CACHE = "nutriscan-v7";
+const CACHE = "nutriscan-v8";
 
 // Files that change whenever the app or model is re-deployed. These are served
 // network-first (cache only as an offline fallback) so a stale copy in an old
 // cache can never pin the app to an outdated model — the bug where a previously
 // cached model.json kept a fused-hardswish graph alive after it had been fixed.
 // Everything else (tf.min.js, wasm binaries, icons) stays cache-first.
-const NETWORK_FIRST = [/\/$/, /index\.html$/, /web_model\//, /labels\.txt$/, /label_nutrition\.json$/];
+const NETWORK_FIRST = [/\/$/, /index\.html$/, /web_model\//, /labels\.txt$/, /label_nutrition\.json$/, /foods\.json$/];
 const isNetworkFirst = (path) => NETWORK_FIRST.some((re) => re.test(path));
 
 // Every asset the app needs to run with zero network. Relative URLs so it
@@ -28,6 +28,7 @@ const ASSETS = [
   "./web_model/group1-shard1of1.bin",
   "./labels.txt",
   "./label_nutrition.json",
+  "./foods.json",
   "./icon-192.png",
   "./icon-512.png",
   "./apple-touch-icon.png"

@@ -12,6 +12,7 @@
 !tfjs-backend-wasm-threaded-simd.wasm
 !labels.txt
 !label_nutrition.json
+!foods.json
 !icon-192.png
 !icon-512.png
 !apple-touch-icon.png
