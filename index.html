@@ -268,6 +268,22 @@
   .databtn:active{background:var(--accent-weak); color:var(--accent-600);}
   .datanote{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5;}
 
+  .wrow{display:flex; gap:10px; align-items:center;}
+  .wsum{margin-top:12px; font-size:14px;}
+  .wsum b{font-size:20px; font-weight:800; letter-spacing:-.02em;}
+  .wdelta{font-size:12.5px; font-weight:700; margin-left:6px;}
+  .wdelta.down{color:var(--accent-600);}
+  .wdelta.up{color:#b45309;}
+  .wmuted{font-size:13px; color:var(--muted); font-weight:500;}
+  .lbl-mini{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.05em; margin:10px 2px 4px;}
+  .portions{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px;}
+  .pchip{
+    border:1px solid var(--border); background:#fff; color:var(--text); cursor:pointer;
+    font-size:14px; font-weight:700; padding:10px 4px; border-radius:11px;
+  }
+  .pchip.on{background:var(--accent-weak); color:var(--accent-600); border-color:#a7f3d0;}
+
   /* ---------- login gate ---------- */
   .login{
     position:fixed; inset:0; z-index:80; display:none;
@@ -524,6 +540,16 @@
         <div class="sec-title" style="margin:0 0 10px">Last 7 days</div>
         <div class="chartwrap" id="chart"></div>
       </div>
+      <div class="card">
+        <div class="sec-title" style="margin:0 0 10px">Weight</div>
+        <div class="wrow">
+          <input id="weightInput" class="input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="kg" />
+          <button id="weightSave" class="databtn" type="button" style="flex:0 0 auto; min-width:92px">Log</button>
+        </div>
+        <div id="weightSummary" class="wsum"></div>
+        <div class="chartwrap" id="weightChart"></div>
+      </div>
+
       <div class="statgrid">
         <div class="stat"><div class="v" id="statAvg">0</div><div class="l">Daily average</div></div>
         <div class="stat"><div class="v" id="statDays">0</div><div class="l">Days logged</div></div>
@@ -884,6 +910,54 @@
     saveLog(log);
   }
 
+  // ---- recent / frequent foods ----
+  // Derived from the diary itself, so there is no extra data to keep in sync.
+  // Ranked by how often a food is logged, then how recently.
+  function recentFoods(limit){
+    const log = loadLog();
+    const byName = {};
+    const list = [];
+    const dates = Object.keys(log);
+    for (let i = 0; i < dates.length; i++){
+      const entries = log[dates[i]];
+      for (let j = 0; j < entries.length; j++){
+        const e = entries[j];
+        const k = String(e.name).toLowerCase();
+        if (byName[k]){
+          byName[k].count++;
+          if ((e.ts || 0) > byName[k].ts){ byName[k].ts = e.ts || 0; byName[k].unit = e.unit; }
+        } else {
+          byName[k] = { name: e.name, unit: e.unit, ts: e.ts || 0, count: 1 };
+          list.push(byName[k]);
+        }
+      }
+    }
+    list.sort((a, b) => (b.count - a.count) || (b.ts - a.ts));
+    return list.slice(0, limit || 8);
+  }
+
+  // ---- weight log ----
+  const WEIGHT_KEY = "nutriscan_weight_v1";
+  function weightKey(){ return currentUser ? WEIGHT_KEY + "::" + currentUser.sub : WEIGHT_KEY; }
+  function loadWeights(){
+    try{
+      const o = JSON.parse(localStorage.getItem(weightKey()) || "{}");
+      return (o && typeof o === "object") ? o : {};
+    }catch(_){ return {}; }
+  }
+  function saveWeights(w){ localStorage.setItem(weightKey(), JSON.stringify(w)); }
+  function setWeight(dateKey, kg){
+    const w = loadWeights();
+    if (kg > 0) w[dateKey] = Math.round(kg * 10) / 10;
+    else delete w[dateKey];
+    saveWeights(w);
+  }
+  function weightSeries(limit){
+    const w = loadWeights();
+    const keys = Object.keys(w).sort();
+    return keys.slice(-(limit || 30)).map(k => ({ d: k, kg: w[k] }));
+  }
+
   // ---- backup / restore ----
   // Everything lives in this browser with no server, so clearing site data
   // would otherwise destroy the diary with no way back.
@@ -893,6 +967,7 @@
       exportedAt: new Date().toISOString(),
       account: currentUser ? (currentUser.email || currentUser.sub) : "guest",
       goals: loadGoals(),
+      weights: loadWeights(),
       log: loadLog(),
     };
   }
@@ -920,6 +995,18 @@
       if (log[date].length > before) days++;
     }
     saveLog(log);
+    // Weights merge by date, keeping any reading already recorded for that day.
+    let weightsAdded = 0;
+    if (payload.weights && typeof payload.weights === "object"){
+      const w = loadWeights();
+      const wd = Object.keys(payload.weights);
+      for (let i = 0; i < wd.length; i++){
+        const kg = Number(payload.weights[wd[i]]);
+        if (w[wd[i]] === undefined && kg > 0){ w[wd[i]] = kg; weightsAdded++; }
+      }
+      if (weightsAdded) saveWeights(w);
+    }
+
     // Goals come back only on a genuinely fresh restore, so an import never
     // silently overwrites goals you have already set.
     let goalsRestored = false;
@@ -927,7 +1014,7 @@
       saveGoalsObj(payload.goals);
       goalsRestored = true;
     }
-    return { added: added, days: days, goalsRestored: goalsRestored };
+    return { added: added, days: days, goalsRestored: goalsRestored, weightsAdded: weightsAdded };
   }
 
   // ================= VIEWS =================
@@ -940,7 +1027,7 @@
       t.classList.toggle("active", t.getAttribute("data-view") === name));
     el("viewSub").textContent = name.charAt(0).toUpperCase() + name.slice(1);
     if (name === "diary") renderDiary();
-    if (name === "progress") renderProgress();
+    if (name === "progress"){ renderProgress(); renderWeight(); }
     if (name === "settings"){ fillSettings(); renderAccount(); }
     window.scrollTo(0, 0);
   }
@@ -1076,6 +1163,51 @@
     el("statDays").textContent = logged.length;
     el("statTotal").textContent = Math.round(total);
     el("statBest").textContent = best && best.total > 0 ? Math.round(best.total) : "—";
+  }
+
+  // ---------- WEIGHT ----------
+  function renderWeight(){
+    const series = weightSeries(30);
+    const input = el("weightInput");
+    const todaysKg = loadWeights()[todayKey()];
+    if (input && document.activeElement !== input){
+      input.value = todaysKg != null ? todaysKg : "";
+    }
+
+    const sum = el("weightSummary");
+    if (!series.length){
+      sum.innerHTML = `<span class="wmuted">No weigh-ins yet — log today’s weight to start a trend.</span>`;
+      el("weightChart").innerHTML = "";
+      return;
+    }
+    const latest = series[series.length - 1];
+    const first = series[0];
+    const delta = latest.kg - first.kg;
+    const arrow = delta > 0.05 ? "▲" : delta < -0.05 ? "▼" : "•";
+    const cls = delta > 0.05 ? "up" : delta < -0.05 ? "down" : "";
+    sum.innerHTML =
+      `<b>${latest.kg} kg</b>` +
+      (series.length > 1
+        ? ` <span class="wdelta ${cls}">${arrow} ${Math.abs(delta).toFixed(1)} kg over ${series.length} weigh-ins</span>`
+        : ` <span class="wmuted">first weigh-in</span>`);
+
+    // sparkline
+    const W = 336, H = 110, pad = 10;
+    const kgs = series.map(p => p.kg);
+    const lo = Math.min.apply(null, kgs), hi = Math.max.apply(null, kgs);
+    const span = (hi - lo) || 1;
+    const x = i => pad + (series.length === 1 ? (W - pad * 2) / 2 : (i * (W - pad * 2)) / (series.length - 1));
+    const y = v => pad + (H - pad * 2) * (1 - (v - lo) / span);
+    const pts = series.map((p, i) => x(i).toFixed(1) + "," + y(p.kg).toFixed(1)).join(" ");
+    const dots = series.map((p, i) =>
+      `<circle cx="${x(i).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="${i === series.length - 1 ? 4 : 2.5}"
+               fill="${i === series.length - 1 ? "#059669" : "#a7e8cd"}"/>`).join("");
+    el("weightChart").innerHTML =
+      `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight trend">
+         ${series.length > 1 ? `<polyline points="${pts}" fill="none" stroke="#10b981" stroke-width="2.5"
+            stroke-linejoin="round" stroke-linecap="round"/>` : ``}
+         ${dots}
+       </svg>`;
   }
 
   // ---------- SETTINGS ----------
@@ -1332,7 +1464,12 @@
                placeholder="kcal" value="${s.unit.kcal != null ? Math.round(s.unit.kcal) : ""}" />
       </div>
 
-      <div class="field"><label>Servings</label>${stepperHTML(s.servings)}</div>
+      <div class="field"><label>Servings</label>
+        <div class="portions">${[0.5, 1, 1.5, 2].map(function(v){
+          return `<button type="button" class="pchip${s.servings === v ? " on" : ""}" data-serv="${v}">${
+            v === 0.5 ? "½" : v === 1.5 ? "1½" : v}</button>`;
+        }).join("")}</div>
+        ${stepperHTML(s.servings)}</div>
 
       <div class="total-line"><span>Total</span><b id="totalKcal">0</b></div>
 
@@ -1589,7 +1726,7 @@
   // Searches the whole INDB list (foods.json), not just the 95 dishes the model
   // knows. Names include the regional spellings INDB keeps in brackets, so
   // "thayir saadam" finds curd rice.
-  let searchMeal = null, searchResults = [];
+  let searchMeal = null, searchResults = [], recentList = [];
 
   function searchFoods(q, limit){
     const terms = String(q).toLowerCase().split(/\s+/).filter(Boolean);
@@ -1610,9 +1747,35 @@
     return scored.slice(0, limit).map(x => x.f);
   }
 
+  function foodRowHTML(name, sub, kcalHTML, attr){
+    return `<button type="button" class="fitem" ${attr}>
+      <div class="f-main"><div class="f-name">${esc(name)}</div><div class="f-sub">${sub}</div></div>
+      <div class="f-kcal">${kcalHTML}</div>
+    </button>`;
+  }
+
   function renderFoodResults(q){
     const box = el("foodResults");
     if (!box) return;
+
+    // With no query, lead with what this person actually eats.
+    if (!q.trim()){
+      recentList = recentFoods(8);
+      if (recentList.length){
+        const rows = recentList.map((r, i) => foodRowHTML(
+          cap(r.name),
+          r.count > 1 ? r.count + "× logged" : "logged once",
+          (r.unit && r.unit.kcal != null)
+            ? `${Math.round(r.unit.kcal)}<small>kcal</small>` : `—<small>add kcal</small>`,
+          `data-recent="${i}"`
+        )).join("");
+        searchResults = [];
+        box.innerHTML = `<div class="lbl-mini">Recent &amp; frequent</div>${rows}` +
+          (foods.length ? `<div class="lbl-mini">Search all ${foods.length} foods above</div>` : ``);
+        return;
+      }
+    }
+
     if (!foods.length){
       box.innerHTML = `<div class="nores">Food list still loading…</div>`;
       return;
@@ -1719,6 +1882,15 @@
       if (f) openAddSheetFromFood(f);
       return;
     }
+    const rec = e.target.closest("[data-recent]");
+    if (rec){
+      const r = recentList[+rec.getAttribute("data-recent")];
+      if (r) openAddSheetFromFood({ n: r.name, u: null,
+        k: r.unit ? r.unit.kcal : null, p: r.unit ? r.unit.protein : null,
+        c: r.unit ? r.unit.carb : null, f: r.unit ? r.unit.fat : null,
+        b: r.unit ? r.unit.fibre : null });
+      return;
+    }
     if (e.target.closest("[data-custom]")) { openCustomSheet(); return; }
     if (e.target.closest("[data-scaninstead]")) { closeSheet(); showView("scan"); return; }
 
@@ -1729,10 +1901,22 @@
         c.classList.toggle("on", c.getAttribute("data-meal") === sheetState.meal));
       return;
     }
+    const pc = e.target.closest("[data-serv]");
+    if (pc && sheetState){
+      sheetState.servings = Number(pc.getAttribute("data-serv"));
+      el("sheetBody").querySelectorAll(".pchip").forEach(function(c){
+        c.classList.toggle("on", Number(c.getAttribute("data-serv")) === sheetState.servings);
+      });
+      syncSheet();
+      return;
+    }
     const step = e.target.closest("[data-step]");
     if (step && sheetState){
       const d = Number(step.getAttribute("data-step")) * 0.5;
       sheetState.servings = Math.max(0.5, Math.round((sheetState.servings + d) * 2) / 2);
+      el("sheetBody").querySelectorAll(".pchip").forEach(function(c){
+        c.classList.toggle("on", Number(c.getAttribute("data-serv")) === sheetState.servings);
+      });
       syncSheet();
       return;
     }
@@ -1783,6 +1967,7 @@
         el("dataNote").textContent =
           "Restored " + res.added + " entr" + (res.added === 1 ? "y" : "ies") +
           " across " + res.days + " day" + (res.days === 1 ? "" : "s") +
+          (res.weightsAdded ? " and " + res.weightsAdded + " weigh-ins" : "") +
           (res.goalsRestored ? ", plus your goals." : ". Existing entries were kept.");
         renderDiary();
       }catch(err){
@@ -1791,6 +1976,13 @@
     };
     reader.onerror = () => { el("dataNote").textContent = "Could not read that file."; };
     reader.readAsText(file);
+  });
+
+  el("weightSave").addEventListener("click", () => {
+    const kg = numOrNull(el("weightInput").value);
+    if (!(kg > 0)){ el("weightInput").focus(); return; }
+    setWeight(todayKey(), kg);
+    renderWeight();
   });
 
   el("guestBtn").addEventListener("click", () => { setGuest(true); refreshGate(); });
