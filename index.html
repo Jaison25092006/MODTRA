@@ -249,6 +249,25 @@
   @keyframes spin{to{transform:rotate(360deg);}}
   .overlay p{margin-top:14px; font-size:14px; color:var(--muted); font-weight:600;}
 
+  /* ---------- low-confidence + data tools ---------- */
+  .unsure{border-color:#fde68a; background:#fffbeb;}
+  .unsure .u-head{display:flex; align-items:center; gap:9px; font-weight:700; font-size:15px; color:#92400e;}
+  .unsure p{margin:8px 0 12px; font-size:13px; color:#a16207; line-height:1.5;}
+  .unsure .u-btn{
+    width:100%; border:0; cursor:pointer; font-weight:700; font-size:14px;
+    padding:11px; border-radius:12px; background:#f59e0b; color:#fff;
+  }
+  .unsure .u-btn:active{opacity:.85;}
+  .card.guess{opacity:.86;}
+  .card.guess .dish{font-weight:600;}
+  .datarow{display:flex; gap:10px; margin-top:4px;}
+  .databtn{
+    flex:1 1 0; border:1px solid var(--border); background:#fff; color:var(--text);
+    font-weight:700; font-size:13.5px; padding:12px 8px; border-radius:12px; cursor:pointer;
+  }
+  .databtn:active{background:var(--accent-weak); color:var(--accent-600);}
+  .datanote{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5;}
+
   /* ---------- login gate ---------- */
   .login{
     position:fixed; inset:0; z-index:80; display:none;
@@ -542,6 +561,19 @@
       </div>
 
       <div class="card">
+        <div class="sec-title" style="margin:0 0 12px">Your data</div>
+        <div class="datarow">
+          <button id="exportBtn" class="databtn" type="button">⤓ Export backup</button>
+          <button id="importBtn" class="databtn" type="button">⤒ Restore backup</button>
+        </div>
+        <div class="datanote" id="dataNote">
+          Your diary is saved only in this browser. Export a copy so clearing
+          Safari’s website data can’t lose it — restoring merges entries and
+          never overwrites what’s already there.
+        </div>
+      </div>
+
+      <div class="card">
         <div class="sec-title" style="margin:0 0 6px">App</div>
         <div class="kv"><span class="k">TF.js backend</span><span class="v badge" id="backendTag">…</span></div>
         <div class="kv"><span class="k">Dishes recognised</span><span class="v" id="labelCount">—</span></div>
@@ -587,6 +619,7 @@
 
   <input id="camInput" type="file" accept="image/*" capture="environment" hidden />
   <input id="libInput" type="file" accept="image/*" hidden />
+  <input id="importInput" type="file" accept="application/json,.json" hidden />
 
   <div id="overlay" class="overlay"><div style="text-align:center"><div class="spinner"></div><p>Analyzing…</p></div></div>
 
@@ -851,6 +884,52 @@
     saveLog(log);
   }
 
+  // ---- backup / restore ----
+  // Everything lives in this browser with no server, so clearing site data
+  // would otherwise destroy the diary with no way back.
+  function buildExport(){
+    return {
+      app: "nutriscan", version: 1,
+      exportedAt: new Date().toISOString(),
+      account: currentUser ? (currentUser.email || currentUser.sub) : "guest",
+      goals: loadGoals(),
+      log: loadLog(),
+    };
+  }
+
+  // Merges, never replaces: entries already present (matched by id) are kept,
+  // so importing the same file twice cannot duplicate or wipe anything.
+  function importPayload(payload){
+    if (!payload || payload.app !== "nutriscan" || !payload.log || typeof payload.log !== "object"){
+      throw new Error("That isn't a NutriScan backup file.");
+    }
+    const log = loadLog();
+    let added = 0, days = 0;
+    const dates = Object.keys(payload.log);
+    for (let i = 0; i < dates.length; i++){
+      const date = dates[i];
+      const incoming = Array.isArray(payload.log[date]) ? payload.log[date].map(normalizeEntry) : [];
+      if (!incoming.length) continue;
+      if (!log[date]) log[date] = [];
+      const seen = {};
+      for (let j = 0; j < log[date].length; j++) seen[log[date][j].id] = 1;
+      const before = log[date].length;
+      for (let j = 0; j < incoming.length; j++){
+        if (!seen[incoming[j].id]){ log[date].push(incoming[j]); seen[incoming[j].id] = 1; added++; }
+      }
+      if (log[date].length > before) days++;
+    }
+    saveLog(log);
+    // Goals come back only on a genuinely fresh restore, so an import never
+    // silently overwrites goals you have already set.
+    let goalsRestored = false;
+    if (payload.goals && localStorage.getItem(goalsKey()) === null){
+      saveGoalsObj(payload.goals);
+      goalsRestored = true;
+    }
+    return { added: added, days: days, goalsRestored: goalsRestored };
+  }
+
   // ================= VIEWS =================
   let currentView = "diary";
   function showView(name){
@@ -1031,7 +1110,7 @@
     return `<span class="chip ${cls}">${pct}%</span>`;
   }
 
-  function cardHTML(pred, isTop, idx){
+  function cardHTML(pred, isTop, idx, unsure){
     const n = pred.nut;
     const title = (n && n.name) ? n.name : cap(pred.label);
     let body;
@@ -1051,7 +1130,7 @@
       body = `<div class="addman">No nutrition data — you'll enter the calories</div>
               <div class="addrow"><button class="addbtn" type="button" data-add="${idx}">Add manually</button></div>`;
     }
-    return `<div class="card ${isTop ? "top" : ""} ${hasNumber(n) ? "" : "unavail"} fade">
+    return `<div class="card ${isTop ? "top" : ""} ${unsure ? "guess" : ""} ${hasNumber(n) ? "" : "unavail"} fade">
       <div class="card-head">
         <div><div class="dish">${esc(title)}</div>${hasNumber(n) ? `<div class="serving">per ${esc(n.serving || "serving")}</div>` : ``}</div>
         ${confChip(pred.conf)}
@@ -1060,9 +1139,26 @@
     </div>`;
   }
 
+  // Below this the model is guessing more than recognising (it scores ~74% over
+  // 95 dishes), so say so rather than presenting a weak guess as a fact.
+  const CONF_MIN = 0.40;
+
   function render(preds){
     currentPreds = preds;
-    el("results").innerHTML = preds.map((p, i) => cardHTML(p, i === 0, i)).join("");
+    const unsure = !preds.length || preds[0].conf < CONF_MIN;
+    let html = "";
+    if (unsure){
+      const guess = preds.length ? esc((preds[0].nut && preds[0].nut.name) || cap(preds[0].label)) : "";
+      html += `<div class="card unsure fade">
+        <div class="u-head">⚠︎ Not sure what this is</div>
+        <p>${preds.length
+              ? `Closest guess is <b>${guess}</b> at only ${Math.round(preds[0].conf * 100)}% — that is low enough to be wrong. Search for it instead so your diary stays accurate.`
+              : `No confident match. Search for the dish instead.`}</p>
+        <button class="u-btn" type="button" data-searchinstead="1">Search the food list</button>
+      </div>`;
+    }
+    html += preds.map((p, i) => cardHTML(p, i === 0 && !unsure, i, unsure)).join("");
+    el("results").innerHTML = html;
   }
 
   // ---- scanning ----
@@ -1539,20 +1635,21 @@
     }).join("");
   }
 
-  function openSearchSheet(meal){
+  function openSearchSheet(meal, prefill){
     searchMeal = MEALS.indexOf(meal) >= 0 ? meal : guessMeal();
+    const q0 = prefill ? String(prefill) : "";
     openSheet(`
       <h3>Add food</h3>
       <p class="hint">${searchMeal} · ${labelOf(viewedDate)}</p>
       <input id="foodSearch" class="input" type="search" autocomplete="off"
-             placeholder="Search foods (e.g. dosa, thayir saadam)…" />
+             value="${esc(q0)}" placeholder="Search foods (e.g. dosa, thayir saadam)…" />
       <div class="srow">
         <button type="button" class="linkish" data-scaninstead="1">📷 Scan a photo</button>
         <button type="button" class="linkish" data-custom="1">+ Custom food</button>
       </div>
       <div id="foodResults" class="results-list"></div>
     `);
-    renderFoodResults("");
+    renderFoodResults(q0);
     const inp = el("foodSearch");
     if (inp) { try { inp.focus(); } catch (_) {} }
   }
@@ -1600,6 +1697,11 @@
 
   // scan results -> add sheet
   el("results").addEventListener("click", (e) => {
+    if (e.target.closest("[data-searchinstead]")){
+      const g = currentPreds.length ? ((currentPreds[0].nut && currentPreds[0].nut.name) || cap(currentPreds[0].label)) : "";
+      openSearchSheet(pendingMeal || guessMeal(), g);
+      return;
+    }
     const btn = e.target.closest("[data-add]");
     if (!btn) return;
     const p = currentPreds[+btn.getAttribute("data-add")];
@@ -1650,6 +1752,47 @@
 
   // scan inputs: "Scan food" opens the live camera, the image button opens the
   // photo library. camInput is only reached as a camera fallback.
+  // ---- backup / restore ----
+  el("exportBtn").addEventListener("click", () => {
+    try{
+      const data = JSON.stringify(buildExport(), null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "nutriscan-backup-" + keyOf(new Date()) + ".json";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+      el("dataNote").textContent = "Backup downloaded. Keep it somewhere safe.";
+    }catch(err){
+      el("dataNote").textContent = "Export failed: " + err.message;
+    }
+  });
+
+  el("importBtn").addEventListener("click", () => el("importInput").click());
+
+  el("importInput").addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";                 // allow re-picking the same file
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const res = importPayload(JSON.parse(String(reader.result)));
+        el("dataNote").textContent =
+          "Restored " + res.added + " entr" + (res.added === 1 ? "y" : "ies") +
+          " across " + res.days + " day" + (res.days === 1 ? "" : "s") +
+          (res.goalsRestored ? ", plus your goals." : ". Existing entries were kept.");
+        renderDiary();
+      }catch(err){
+        el("dataNote").textContent = "Restore failed: " + err.message;
+      }
+    };
+    reader.onerror = () => { el("dataNote").textContent = "Could not read that file."; };
+    reader.readAsText(file);
+  });
+
   el("guestBtn").addEventListener("click", () => { setGuest(true); refreshGate(); });
 
   el("scanBtn").addEventListener("click", scanTapped);
