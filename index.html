@@ -816,7 +816,7 @@
   // Supabase (Stage 1). With SUPABASE_ANON_KEY blank, syncEnabled() is false and
   // nothing touches the network — identical behaviour to the offline-only app.
   const SUPABASE_URL = "https://dmnyujbnhajonipbicxc.supabase.co";
-  const SUPABASE_ANON_KEY = "";          // <-- paste the anon / publishable key
+  const SUPABASE_ANON_KEY = "sb_publishable_mSN4HJZ1dddy0F6_DGScjg_dgjokz7l";
   function syncConfigured(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
   function syncEnabled(){ return syncConfigured() && !!(currentUser && currentUser.supabase); }
   const MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
