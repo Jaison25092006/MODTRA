@@ -3,7 +3,15 @@
    (e.g. after re-exporting the model) so clients pick up the new files. */
 "use strict";
 
-const CACHE = "nutriscan-v3";
+const CACHE = "nutriscan-v4";
+
+// Files that change whenever the app or model is re-deployed. These are served
+// network-first (cache only as an offline fallback) so a stale copy in an old
+// cache can never pin the app to an outdated model — the bug where a previously
+// cached model.json kept a fused-hardswish graph alive after it had been fixed.
+// Everything else (tf.min.js, wasm binaries, icons) stays cache-first.
+const NETWORK_FIRST = [/\/$/, /index\.html$/, /web_model\//, /labels\.txt$/, /label_nutrition\.json$/];
+const isNetworkFirst = (path) => NETWORK_FIRST.some((re) => re.test(path));
 
 // Every asset the app needs to run with zero network. Relative URLs so it
 // works under a GitHub Pages subpath (…/<repo>/) as well as at a domain root.
@@ -45,29 +53,40 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Cache-first: serve from cache, fall back to network, and for page navigations
-// fall back to the cached index.html when fully offline.
+const putInCache = (req, res) => {
+  if (res && res.ok && res.type === "basic") {
+    const copy = res.clone();
+    caches.open(CACHE).then((cache) => cache.put(req, copy));
+  }
+  return res;
+};
+const offlineFallback = (req) =>
+  caches.match(req).then((cached) => {
+    if (cached) return cached;
+    if (req.mode === "navigate") return caches.match("./index.html");
+    return Response.error();
+  });
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
 
+  let path = "";
+  try { path = new URL(req.url).pathname; } catch (_) { /* opaque URL */ }
+
+  // Network-first for the app shell + model/data: always current when online,
+  // still fully usable from cache when offline.
+  if (isNetworkFirst(path)) {
+    event.respondWith(
+      fetch(req).then((res) => putInCache(req, res)).catch(() => offlineFallback(req))
+    );
+    return;
+  }
+
+  // Cache-first for large, stable assets (tf.min.js, wasm, icons).
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
-        .then((res) => {
-          // Runtime-cache successful same-origin GETs so anything missed by the
-          // precache list is still available offline next time.
-          if (res && res.ok && res.type === "basic") {
-            const copy = res.clone();
-            caches.open(CACHE).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => {
-          if (req.mode === "navigate") return caches.match("./index.html");
-          return Response.error();
-        });
-    })
+    caches.match(req).then((cached) =>
+      cached || fetch(req).then((res) => putInCache(req, res)).catch(() => offlineFallback(req))
+    )
   );
 });
