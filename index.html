@@ -1232,7 +1232,11 @@
   // SETUP: create an OAuth 2.0 Client ID (Web application) at
   // console.cloud.google.com/apis/credentials, add this site as an authorised
   // JavaScript origin, and paste the ID below.
-  const GOOGLE_CLIENT_ID = "";   // <-- paste your Client ID here
+  // A Client ID is public by design — it is sent to Google from the browser on
+  // every sign-in. The client SECRET from the downloaded JSON is NOT used here
+  // and must never be put in client-side code; browser apps are "public
+  // clients" and GIS does not need it.
+  const GOOGLE_CLIENT_ID = "851437694705-7bscqbd7kinid3ea5alq1drl795dn3ck.apps.googleusercontent.com";
 
   function decodeJwtPayload(token){
     try{
