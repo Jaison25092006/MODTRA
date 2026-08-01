@@ -1917,18 +1917,26 @@
   function lastPullKey(){ return LASTPULL_KEY + (currentUser ? "::" + currentUser.sub : ""); }
 
   function initSupabase(){
-    if (!syncConfigured()) return;
+    if (sb) return sb;                                   // already built
+    if (window.__nsSupabaseClient){ sb = window.__nsSupabaseClient; return sb; }
+    if (!syncConfigured()) return null;
     if (!(window.supabase && window.supabase.createClient)){
       console.warn("supabase.js not loaded — running offline-only.");
-      return;
+      return null;
     }
     try{
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+        auth: {
+          persistSession: true, autoRefreshToken: true, detectSessionInUrl: false,
+          storageKey: "nutriscan-auth",                  // distinct from any other client
+        },
       });
+      window.__nsSupabaseClient = sb;                    // one instance per page, always
+      console.log("Supabase client created (single instance).");
     }catch(err){
       console.warn("Supabase client failed:", err && err.message);
     }
+    return sb;
   }
 
   function setSyncStatus(text){
@@ -1953,6 +1961,8 @@
       const session = got && got.data ? got.data.session : null;
       const uid = session && session.user ? session.user.id : null;
       if (!uid) throw new Error("no active session");
+      console.log("[sync] session ok, uid=" + uid +
+                  " token=" + (session.access_token ? "present" : "MISSING"));
 
       // First sync for this account: queue the diary that already exists locally.
       const backfillKey = "nutriscan_backfill_v1::" + uid;
@@ -1964,10 +1974,18 @@
 
       // push first, so a pull can never overwrite unsent work
       const rows = outboxRows(uid);
-      console.log("Sync: pushing " + rows.length + " row(s) as user " + uid);
+      console.log("[sync] pushing " + rows.length + " row(s) as user_id=" + uid);
       if (rows.length){
+        console.log("[sync] payload sample:", JSON.stringify(rows[0]));
         const up = await sb.from("food_log").upsert(rows, { onConflict: "user_id,client_id" });
-        if (up.error) throw up.error;
+        if (up.error){
+          // Log the whole error object: message alone hides code/details/hint.
+          console.error("[sync] upsert REJECTED:", up.error);
+          console.error("[sync] code=" + up.error.code + " details=" + up.error.details +
+                        " hint=" + up.error.hint);
+          throw up.error;
+        }
+        console.log("[sync] upsert accepted:", rows.length, "row(s)");
         markClean(rows.map(function(r){ return r.client_id; }));
       }
 
@@ -2354,6 +2372,15 @@
   saveLog(loadLog());
 
   initSupabase();
+  // Console diagnostics: window.nutriscan.sync() forces a push/pull and logs
+  // everything; window.nutriscan.pending() shows what is queued.
+  window.nutriscan = {
+    sync: function(){ return syncNow(); },
+    pending: function(){ return pendingSyncCount(); },
+    outbox: function(){ return currentUser ? outboxRows(currentUser.sub) : []; },
+    user: function(){ return currentUser; },
+    client: function(){ return sb; },
+  };
   initGoogle();
   restoreSupabaseSession();
   window.addEventListener("online", syncNow);
