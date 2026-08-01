@@ -284,6 +284,15 @@
   }
   .pchip.on{background:var(--accent-weak); color:var(--accent-600); border-color:#a7f3d0;}
 
+  .dev summary{
+    cursor:pointer; list-style:none; font-size:12px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.05em; outline:none;
+  }
+  .dev summary::-webkit-details-marker{display:none;}
+  .dev summary::after{content:" BE"; font-size:11px;}
+  .dev[open] summary::after{content:" B4";}
+  .dev[open] summary{margin-bottom:8px;}
+
   /* ---------- login gate ---------- */
   .login{
     position:fixed; inset:0; z-index:80; display:none;
@@ -599,14 +608,17 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="sec-title" style="margin:0 0 6px">App</div>
+      <!-- Diagnostics, collapsed by default: not user-facing, but the elements must
+           still exist because init() writes the backend name and dish count into
+           them, and setSyncStatus() updates the sync label. -->
+      <details class="card dev">
+        <summary>About</summary>
         <div class="kv"><span class="k">Cloud sync</span><span class="v" id="syncTag">Off</span></div>
         <div class="kv"><span class="k">TF.js backend</span><span class="v badge" id="backendTag">…</span></div>
         <div class="kv"><span class="k">Dishes recognised</span><span class="v" id="labelCount">—</span></div>
         <div class="kv"><span class="k">Nutrition source</span><span class="v">INDB (offline)</span></div>
         <div class="kv"><span class="k">Works offline</span><span class="v">Yes</span></div>
-      </div>
+      </details>
     </section>
   </main>
 
