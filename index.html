@@ -249,6 +249,43 @@
   @keyframes spin{to{transform:rotate(360deg);}}
   .overlay p{margin-top:14px; font-size:14px; color:var(--muted); font-weight:600;}
 
+  /* ---------- login gate ---------- */
+  .login{
+    position:fixed; inset:0; z-index:80; display:none;
+    background:linear-gradient(170deg,#ffffff 0%, #f0fdf8 55%, #e8f9f1 100%);
+    padding:calc(24px + var(--safe-top)) 26px calc(28px + var(--safe-bottom));
+    overflow-y:auto;
+  }
+  .login.show{display:flex; align-items:center; justify-content:center;}
+  .login-inner{width:100%; max-width:360px; text-align:center;}
+  .login-logo{
+    width:78px; height:78px; margin:0 auto 22px; border-radius:24px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-600));
+    display:grid; place-items:center; color:#fff;
+    box-shadow:0 12px 30px rgba(16,185,129,.38);
+  }
+  .login h1{margin:0 0 8px; font-size:29px; letter-spacing:-.03em; font-weight:800;}
+  .login .tag{margin:0 auto 30px; font-size:14.5px; color:var(--muted); max-width:290px; line-height:1.5;}
+  .login-feats{
+    display:flex; flex-direction:column; gap:11px; text-align:left;
+    margin:0 auto 30px; max-width:280px;
+  }
+  .login-feat{display:flex; align-items:center; gap:11px; font-size:13.5px; color:#334155;}
+  .login-feat .tick{
+    width:22px; height:22px; border-radius:50%; flex:0 0 auto;
+    background:var(--accent-weak); color:var(--accent-600);
+    display:grid; place-items:center; font-size:12px; font-weight:800;
+  }
+  .login-gbtn{display:flex; justify-content:center; min-height:44px;}
+  .login-note{font-size:12.5px; color:var(--muted); margin-top:14px; line-height:1.5;}
+  .login-guest{
+    margin-top:18px; background:none; border:0; cursor:pointer;
+    color:var(--muted); font-size:13px; font-weight:700; text-decoration:underline;
+    text-underline-offset:3px; padding:8px;
+  }
+  .login-guest:active{color:var(--accent-600);}
+  .login-legal{margin-top:22px; font-size:11px; color:#94a3b8; line-height:1.5;}
+
   /* ---------- account ---------- */
   .acct{display:flex; align-items:center; gap:12px;}
   .acct img{width:44px; height:44px; border-radius:50%; flex:0 0 auto; background:#eef1f4;}
@@ -357,6 +394,31 @@
 </style>
 </head>
 <body>
+  <!-- Sign-in gate. Shown until an account is chosen; the app behind it is not
+       rendered to the user, though with no backend this is a front door, not a
+       lock (all data lives in this browser). -->
+  <div id="login" class="login show">
+    <div class="login-inner">
+      <div class="login-logo">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><circle cx="12" cy="12" r="3.4"/></svg>
+      </div>
+      <h1>NutriScan</h1>
+      <p class="tag">Indian &amp; Tamil food calories, recognised on your phone.</p>
+
+      <div class="login-feats">
+        <div class="login-feat"><span class="tick">✓</span> Scan a dish to get calories &amp; macros</div>
+        <div class="login-feat"><span class="tick">✓</span> Search 1,000+ Indian foods</div>
+        <div class="login-feat"><span class="tick">✓</span> Works offline — nothing leaves your device</div>
+      </div>
+
+      <div id="loginBtn" class="login-gbtn"></div>
+      <div id="loginNote" class="login-note"></div>
+      <button id="guestBtn" class="login-guest" type="button">Continue without an account</button>
+
+      <div class="login-legal">Your diary is stored only on this device.<br>No data is uploaded.</div>
+    </div>
+  </div>
+
   <header class="appbar">
     <div class="logo" aria-hidden="true">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><circle cx="12" cy="12" r="3.2"/></svg>
@@ -545,6 +607,8 @@
       b.innerHTML = "<strong>" + title + "</strong>" +
         (detail ? "<div style='margin-top:4px;font-weight:500;opacity:.92'>" + detail + "</div>" : "");
       b.hidden = false;
+      var lg = document.getElementById("login");
+      if (lg) { lg.classList.remove("show"); document.body.style.overflow = ""; }
     }
     window.addEventListener("error", function(e){
       var msg = (e && e.message) ? e.message : "Script error";
@@ -1249,6 +1313,58 @@
     }catch(_){ return null; }
   }
 
+  // "Guest" is a deliberate escape hatch: with no backend, sign-in needs the
+  // network, so without this a fresh install would be unusable offline — which
+  // would break the app's whole offline promise.
+  const GUEST_KEY = "nutriscan_guest_v1";
+  const isGuest = () => localStorage.getItem(GUEST_KEY) === "1";
+  function setGuest(on){
+    if (on) localStorage.setItem(GUEST_KEY, "1");
+    else localStorage.removeItem(GUEST_KEY);
+  }
+
+  // Renders the official Google button into a container, if GIS is available.
+  function renderGoogleButton(containerId, width){
+    const box = el(containerId);
+    if (!box) return false;
+    if (!GOOGLE_CLIENT_ID) return false;
+    if (!(window.google && google.accounts && google.accounts.id)) return false;
+    try{
+      box.innerHTML = "";
+      google.accounts.id.renderButton(box,
+        { theme: "outline", size: "large", shape: "pill", text: "signin_with", width: width || 260 });
+      return true;
+    }catch(err){
+      console.warn("renderButton failed:", err && err.message);
+      return false;
+    }
+  }
+
+  // Decides whether the app or the sign-in screen is visible.
+  function refreshGate(){
+    const signedIn = !!currentUser || isGuest();
+    const login = el("login");
+    if (!login) return;
+    login.classList.toggle("show", !signedIn);
+    document.body.style.overflow = signedIn ? "" : "hidden";
+    if (signedIn) return;
+
+    const note = el("loginNote");
+    if (!GOOGLE_CLIENT_ID){
+      el("loginBtn").innerHTML = "";
+      note.textContent = "Google sign-in isn’t configured yet — continue below.";
+      return;
+    }
+    if (renderGoogleButton("loginBtn", 280)){
+      note.textContent = "";
+    } else {
+      el("loginBtn").innerHTML = "";
+      note.textContent = navigator.onLine
+        ? "Loading Google sign-in…"
+        : "You’re offline — Google sign-in needs a connection.";
+    }
+  }
+
   function loadUser(){
     try{ return JSON.parse(localStorage.getItem(USER_KEY) || "null"); }catch(_){ return null; }
   }
@@ -1276,6 +1392,8 @@
     }
     currentUser = user;
     saveUser(user);
+    setGuest(false);
+    refreshGate();
     renderAccount();
     showView(currentView);
   }
@@ -1286,6 +1404,8 @@
     }catch(_){}
     currentUser = null;
     saveUser(null);
+    setGuest(false);
+    refreshGate();
     renderAccount();
     showView(currentView);
   }
@@ -1330,14 +1450,7 @@
        <div class="guest">Sign in to keep a separate diary for your Google account on this device.</div>
        <div id="gbtn"></div>`;
 
-    if (window.google && google.accounts && google.accounts.id){
-      try{
-        google.accounts.id.renderButton(el("gbtn"),
-          { theme: "outline", size: "large", shape: "pill", text: "signin_with", width: 260 });
-      }catch(err){
-        el("gbtn").innerHTML = `<div class="guest">Sign-in button unavailable: ${esc(err.message)}</div>`;
-      }
-    } else {
+    if (!renderGoogleButton("gbtn", 260)){
       el("gbtn").innerHTML =
         `<div class="guest">Google sign-in needs an internet connection. Everything else works offline.</div>`;
     }
@@ -1346,6 +1459,7 @@
   function initGoogle(){
     currentUser = loadUser();      // restore the last signed-in account
     renderAccount();
+    refreshGate();
     if (!GOOGLE_CLIENT_ID) return;
 
     // The GIS script is loaded async and may be slow (or absent offline), so
@@ -1366,9 +1480,11 @@
           console.warn("Google init failed:", err && err.message);
         }
         renderAccount();
+        refreshGate();
       } else if (tries > 40){
         clearInterval(timer);      // ~10s: offline or blocked
         renderAccount();
+        refreshGate();
       }
     }, 250);
   }
@@ -1534,6 +1650,8 @@
 
   // scan inputs: "Scan food" opens the live camera, the image button opens the
   // photo library. camInput is only reached as a camera fallback.
+  el("guestBtn").addEventListener("click", () => { setGuest(true); refreshGate(); });
+
   el("scanBtn").addEventListener("click", scanTapped);
   el("searchBtn").addEventListener("click", () => openSearchSheet(pendingMeal || guessMeal()));
   el("uploadBtn").addEventListener("click", () => el("libInput").click());
