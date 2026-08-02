@@ -611,9 +611,12 @@
       <!-- Diagnostics, collapsed by default: not user-facing, but the elements must
            still exist because init() writes the backend name and dish count into
            them, and setSyncStatus() updates the sync label. -->
+      <div class="card">
+        <div class="kv" style="border-bottom:0"><span class="k">Cloud sync</span><span class="v" id="syncTag">Off</span></div>
+      </div>
+
       <details class="card dev">
         <summary>About</summary>
-        <div class="kv"><span class="k">Cloud sync</span><span class="v" id="syncTag">Off</span></div>
         <div class="kv"><span class="k">TF.js backend</span><span class="v badge" id="backendTag">…</span></div>
         <div class="kv"><span class="k">Dishes recognised</span><span class="v" id="labelCount">—</span></div>
         <div class="kv"><span class="k">Nutrition source</span><span class="v">INDB (offline)</span></div>
@@ -829,8 +832,10 @@
   // nothing touches the network — identical behaviour to the offline-only app.
   const SUPABASE_URL = "https://dmnyujbnhajonipbicxc.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_mSN4HJZ1dddy0F6_DGScjg_dgjokz7l";
+  let sbSession = null;                  // set ONLY from supabase.auth, never persisted
   function syncConfigured(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
-  function syncEnabled(){ return syncConfigured() && !!(currentUser && currentUser.supabase); }
+  function syncEnabled(){ return syncConfigured() && !!(sbSession && sbSession.user); }
+  function hasSupabaseSession(){ return !!(sbSession && sbSession.user); }
   const MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
   // Signed-in Google account, or null for "guest". Each account gets its own
@@ -1787,21 +1792,18 @@
     // auth.uid(), so without this the diary can only ever be local.
     if (syncConfigured() && sb){
       try{
+        console.log("[auth] exchanging Google ID token for a Supabase session…");
         const res = await sb.auth.signInWithIdToken({ provider: "google", token: cred });
-        if (res.error) throw res.error;
-        const u = res.data && res.data.user;
-        if (!u) throw new Error("no user returned");
-        const meta = u.user_metadata || {};
-        user = {
-          sub: u.id,
-          name: meta.full_name || meta.name || p.name || u.email || "Account",
-          email: u.email || p.email || "",
-          picture: meta.avatar_url || meta.picture || p.picture || "",
-          supabase: true,
-        };
-        adoptAccount(user, p.sub);
-        refreshGate();
-        renderAccount();
+        if (res.error){ console.error("[auth] signInWithIdToken rejected:", res.error); throw res.error; }
+
+        // Trust getSession(), not the sign-in response: this is the same thing
+        // sync checks, so if it is empty we must not claim to be signed in.
+        const check = await sb.auth.getSession();
+        const session = check && check.data ? check.data.session : null;
+        if (!session || !session.user) throw new Error("sign-in returned no session");
+
+        pendingGoogleSub = p.sub;         // so the old Google-keyed diary migrates
+        applySession(session);
         showView(currentView);
         syncNow();
         return;
@@ -1821,6 +1823,7 @@
     try{
       if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
     }catch(_){}
+    sbSession = null;
     currentUser = null;
     saveUser(null);
     setGuest(false);
@@ -1876,8 +1879,7 @@
   }
 
   function initGoogle(){
-    currentUser = loadUser();      // restore the last signed-in account
-    renderAccount();
+    renderAccount();               // currentUser is owned by bootAuth()
     refreshGate();
     if (!GOOGLE_CLIENT_ID) return;
 
@@ -2039,27 +2041,62 @@
     setGuest(false);
   }
 
-  async function restoreSupabaseSession(){
-    if (!sb) return false;
-    try{
-      const got = await sb.auth.getSession();
-      const session = got && got.data ? got.data.session : null;
-      if (!session || !session.user) return false;
-      const u = session.user;
-      const meta = u.user_metadata || {};
+  // Adopt whatever Supabase says the session is. Called on boot, after sign-in,
+  // and from onAuthStateChange (token refresh, expiry, sign-out).
+  let pendingGoogleSub = null;
+  function applySession(session){
+    sbSession = (session && session.user) ? session : null;
+    if (sbSession){
+      const u = sbSession.user, meta = u.user_metadata || {};
       adoptAccount({
         sub: u.id, name: meta.full_name || meta.name || u.email || "Account",
         email: u.email || "", picture: meta.avatar_url || meta.picture || "",
         supabase: true,
-      }, null);
-      renderAccount();
-      refreshGate();
-      showView(currentView);
-      syncNow();
-      return true;
+      }, pendingGoogleSub);
+      pendingGoogleSub = null;
+      console.log("[auth] Supabase session active, uid=" + u.id);
+    }
+    renderAccount();
+    refreshGate();
+    syncStatusIdle();
+  }
+
+  async function bootAuth(){
+    initSupabase();
+    if (!sb){
+      currentUser = loadUser();          // no cloud configured: local identity only
+      renderAccount(); refreshGate();
+      return;
+    }
+    sb.auth.onAuthStateChange(function(evt, session){
+      console.log("[auth] " + evt + " session=" + (session ? "yes" : "no"));
+      applySession(session);
+      if (session && session.user) syncNow();
+    });
+    try{
+      const got = await sb.auth.getSession();
+      const session = got && got.data ? got.data.session : null;
+      if (session && session.user){
+        applySession(session);
+        showView(currentView);
+        syncNow();
+        return;
+      }
+      // No session. A stored profile claiming supabase:true is stale (expired, or
+      // orphaned by an auth storage change) — showing it would let the UI say
+      // "signed in" while sync has no session at all. Treat it as signed out.
+      const persisted = loadUser();
+      if (persisted && persisted.supabase){
+        console.warn("[auth] stored profile has no Supabase session — signing out.");
+        saveUser(null);
+        currentUser = null;
+      } else {
+        currentUser = persisted;
+      }
+      renderAccount(); refreshGate();
     }catch(err){
-      console.warn("Session restore failed:", err && err.message);
-      return false;
+      console.warn("[auth] getSession failed:", err && err.message);
+      renderAccount(); refreshGate();
     }
   }
 
@@ -2380,9 +2417,11 @@
     outbox: function(){ return currentUser ? outboxRows(currentUser.sub) : []; },
     user: function(){ return currentUser; },
     client: function(){ return sb; },
+    session: function(){ return sbSession; },
+    getSession: function(){ return sb ? sb.auth.getSession() : null; },
   };
   initGoogle();
-  restoreSupabaseSession();
+  bootAuth();
   window.addEventListener("online", syncNow);
   showView("diary");
   init();
