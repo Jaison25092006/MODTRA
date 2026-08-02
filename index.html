@@ -293,6 +293,50 @@
   .dev[open] summary::after{content:" B4";}
   .dev[open] summary{margin-bottom:8px;}
 
+  /* ---------- water ---------- */
+  .water-head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .water-sub{font-size:13.5px; font-weight:700; margin-top:4px;}
+  .water-undo{
+    flex:0 0 auto; width:34px; height:34px; border-radius:10px; cursor:pointer;
+    border:1px solid var(--border); background:#fff; color:var(--text); font-size:20px;
+    line-height:1; display:grid; place-items:center;
+  }
+  .water-undo:active{background:#eff6ff;}
+  .water-undo[disabled]{opacity:.35; cursor:default;}
+  .glasses{display:flex; flex-wrap:wrap; gap:7px; margin:14px 0 4px;}
+  .glass{width:22px; height:26px; color:#cbd5e1;}
+  .glass.on{color:#3b82f6;}
+  .glass.on svg{fill:#dbeafe;}
+  .glass.extra{
+    width:auto; height:auto; font-size:12px; font-weight:800; color:#2563eb;
+    background:#dbeafe; border-radius:999px; padding:3px 8px; align-self:center;
+  }
+  .water-add{
+    width:100%; margin-top:12px; border:0; cursor:pointer; color:#fff;
+    background:linear-gradient(135deg,#3b82f6,#2563eb); font-size:15px; font-weight:700;
+    padding:13px; border-radius:13px; box-shadow:0 6px 16px rgba(37,99,235,.28);
+  }
+  .water-add:active{transform:scale(.985);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  /* in-app reminder toast */
+  .nudge{
+    position:fixed; left:12px; right:12px; z-index:55;
+    bottom:calc(var(--tabbar-h) + 14px + var(--safe-bottom));
+    display:flex; align-items:center; gap:10px; max-width:496px; margin:0 auto;
+    background:#0f172a; color:#fff; border-radius:14px; padding:12px 14px;
+    box-shadow:0 10px 28px rgba(15,23,42,.32); animation:fade .3s ease both;
+  }
+  .nudge .n-text{flex:1 1 auto; font-size:14px; font-weight:600;}
+  .nudge .n-log{
+    flex:0 0 auto; border:0; cursor:pointer; background:#3b82f6; color:#fff;
+    font-weight:700; font-size:13px; padding:8px 14px; border-radius:10px;
+  }
+  .nudge .n-x{
+    flex:0 0 auto; border:0; background:transparent; color:#94a3b8;
+    font-size:20px; line-height:1; cursor:pointer; padding:0 2px;
+  }
+
   /* ---------- login gate ---------- */
   .login{
     position:fixed; inset:0; z-index:80; display:none;
@@ -509,6 +553,18 @@
         <div class="macrobars" id="macroBars"></div>
       </div>
 
+      <div class="card">
+        <div class="water-head">
+          <div>
+            <div class="sec-title" style="margin:0">Water</div>
+            <div class="water-sub" id="waterSub">—</div>
+          </div>
+          <button id="waterUndo" class="water-undo" type="button" aria-label="Remove a glass">&minus;</button>
+        </div>
+        <div class="glasses" id="glasses"></div>
+        <button id="waterAdd" class="water-add" type="button">+ Glass</button>
+      </div>
+
       <div id="mealSections"></div>
     </section>
 
@@ -596,6 +652,32 @@
       </div>
 
       <div class="card">
+        <div class="sec-title" style="margin:0 0 12px">Water &amp; reminders</div>
+        <div class="grid2">
+          <div class="field" style="margin:0">
+            <label for="goalWater">Daily goal (ml)</label>
+            <input id="goalWater" class="input" type="number" inputmode="numeric" min="0" placeholder="2000" />
+          </div>
+          <div class="field" style="margin:0">
+            <label for="glassMl">Glass size (ml)</label>
+            <input id="glassMl" class="input" type="number" inputmode="numeric" min="50" placeholder="250" />
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label for="reminderMins">Remind me to drink</label>
+          <select id="reminderMins" class="input">
+            <option value="0">Off</option>
+            <option value="60">Every hour</option>
+            <option value="120">Every 2 hours</option>
+            <option value="180">Every 3 hours</option>
+          </select>
+        </div>
+        <button id="saveWater" class="btn btn-primary" style="width:100%">Save water settings</button>
+        <button id="notifyBtn" class="databtn" type="button" style="width:100%; margin-top:10px">Enable notifications</button>
+        <div class="datanote" id="notifyNote"></div>
+      </div>
+
+      <div class="card">
         <div class="sec-title" style="margin:0 0 12px">Your data</div>
         <div class="datarow">
           <button id="exportBtn" class="databtn" type="button">⤓ Export backup</button>
@@ -611,12 +693,9 @@
       <!-- Diagnostics, collapsed by default: not user-facing, but the elements must
            still exist because init() writes the backend name and dish count into
            them, and setSyncStatus() updates the sync label. -->
-      <div class="card">
-        <div class="kv" style="border-bottom:0"><span class="k">Cloud sync</span><span class="v" id="syncTag">Off</span></div>
-      </div>
-
       <details class="card dev">
         <summary>About</summary>
+        <div class="kv"><span class="k">Cloud sync</span><span class="v" id="syncTag">Off</span></div>
         <div class="kv"><span class="k">TF.js backend</span><span class="v badge" id="backendTag">…</span></div>
         <div class="kv"><span class="k">Dishes recognised</span><span class="v" id="labelCount">—</span></div>
         <div class="kv"><span class="k">Nutrition source</span><span class="v">INDB (offline)</span></div>
@@ -662,6 +741,12 @@
   <input id="camInput" type="file" accept="image/*" capture="environment" hidden />
   <input id="libInput" type="file" accept="image/*" hidden />
   <input id="importInput" type="file" accept="application/json,.json" hidden />
+
+  <div id="nudge" class="nudge" hidden>
+    <span class="n-text">&#128167; Time for a glass of water</span>
+    <button id="nudgeLog" class="n-log" type="button">Log</button>
+    <button id="nudgeClose" class="n-x" type="button" aria-label="Dismiss">&times;</button>
+  </div>
 
   <div id="overlay" class="overlay"><div style="text-align:center"><div class="spinner"></div><p>Analyzing…</p></div></div>
 
@@ -844,7 +929,8 @@
   let currentUser = null;
   function logKey(){ return currentUser ? LOG_KEY + "::" + currentUser.sub : LOG_KEY; }
   function goalsKey(){ return currentUser ? GOALS_KEY + "::" + currentUser.sub : GOALS_KEY; }
-  const DEFAULT_GOALS = { kcal: 2000, protein: null, carbs: null, fat: null };
+  const DEFAULT_GOALS = { kcal: 2000, protein: null, carbs: null, fat: null,
+                          waterMl: 2000, glassMl: 250, reminderMins: 0 };
 
   let viewedDate = startOfDay(new Date());   // diary always opens on Today
   let pendingMeal = null;                    // set when "Add food" is tapped on a meal
@@ -1105,6 +1191,87 @@
     return list.slice(0, limit || 8);
   }
 
+  // ---- water log ----
+  // One running total per date rather than a row per sip: it cannot drift, and it
+  // upserts cleanly on (user_id, date). Shape: { ml, updatedAt, dirty }.
+  const WATER_KEY = "nutriscan_water_v1";
+  function waterKey(){ return currentUser ? WATER_KEY + "::" + currentUser.sub : WATER_KEY; }
+
+  function normalizeWater(v){
+    if (v && typeof v === "object"){
+      return {
+        ml: Math.max(0, Number(v.ml) || 0),
+        updatedAt: Number(v.updatedAt) > 0 ? Number(v.updatedAt) : Date.now(),
+        dirty: !!v.dirty,
+      };
+    }
+    return { ml: Math.max(0, Number(v) || 0), updatedAt: Date.now(), dirty: false };
+  }
+  function loadWater(){
+    let raw = {};
+    try{ raw = JSON.parse(localStorage.getItem(waterKey()) || "{}"); }catch(_){ raw = {}; }
+    const out = {};
+    Object.keys(raw).forEach(function(d){ out[d] = normalizeWater(raw[d]); });
+    return out;
+  }
+  function saveWater(w){ localStorage.setItem(waterKey(), JSON.stringify(w)); }
+
+  function waterMlFor(dateKey){
+    const w = loadWater();
+    return w[dateKey] ? w[dateKey].ml : 0;
+  }
+  /** Adds (or with a negative value removes) millilitres; never goes below zero. */
+  function addWater(dateKey, ml){
+    const w = loadWater();
+    const cur = w[dateKey] ? w[dateKey].ml : 0;
+    const next = Math.max(0, cur + Number(ml || 0));
+    w[dateKey] = { ml: next, updatedAt: Date.now(), dirty: true };
+    saveWater(w);
+    if (typeof scheduleSync === "function") scheduleSync();
+    return next;
+  }
+  function waterOutboxRows(userId){
+    const w = loadWater(), out = [];
+    Object.keys(w).forEach(function(d){
+      if (w[d].dirty){
+        out.push({ user_id: userId, date: d, ml: w[d].ml,
+                   updated_at: new Date(w[d].updatedAt).toISOString() });
+      }
+    });
+    return out;
+  }
+  function markWaterClean(dates){
+    const set = {};
+    dates.forEach(function(d){ set[d] = 1; });
+    const w = loadWater();
+    Object.keys(w).forEach(function(d){ if (set[d]) w[d].dirty = false; });
+    saveWater(w);
+  }
+  /** Last-write-wins, but an unpushed local total always survives a pull. */
+  function mergeRemoteWater(rows){
+    const w = loadWater();
+    let applied = 0, kept = 0;
+    for (let i = 0; i < rows.length; i++){
+      const d = rows[i].date;
+      const remoteAt = rows[i].updated_at ? Date.parse(rows[i].updated_at) : 0;
+      const ml = Math.max(0, Number(rows[i].ml) || 0);
+      const local = w[d];
+      if (!local || (!local.dirty && remoteAt >= local.updatedAt)){
+        w[d] = { ml: ml, updatedAt: remoteAt || Date.now(), dirty: false };
+        applied++;
+      } else if (local.dirty && local.updatedAt > remoteAt){
+        kept++;
+      } else if (remoteAt > local.updatedAt){
+        w[d] = { ml: ml, updatedAt: remoteAt, dirty: false };
+        applied++;
+      } else {
+        kept++;
+      }
+    }
+    saveWater(w);
+    return { applied: applied, kept: kept };
+  }
+
   // ---- weight log ----
   const WEIGHT_KEY = "nutriscan_weight_v1";
   function weightKey(){ return currentUser ? WEIGHT_KEY + "::" + currentUser.sub : WEIGHT_KEY; }
@@ -1137,6 +1304,7 @@
       account: currentUser ? (currentUser.email || currentUser.sub) : "guest",
       goals: loadGoals(),
       weights: loadWeights(),
+      water: loadWater(),
       log: (function(){
         const raw = loadLog(), out = {};
         Object.keys(raw).forEach(function(d){
@@ -1183,6 +1351,18 @@
       if (weightsAdded) saveWeights(w);
     }
 
+    // Water merges by date, keeping a local total that is newer.
+    let waterAdded = 0;
+    if (payload.water && typeof payload.water === "object"){
+      const w = loadWater();
+      const wd = Object.keys(payload.water);
+      for (let i = 0; i < wd.length; i++){
+        const inc = normalizeWater(payload.water[wd[i]]);
+        if (!w[wd[i]] && inc.ml > 0){ w[wd[i]] = inc; waterAdded++; }
+      }
+      if (waterAdded) saveWater(w);
+    }
+
     // Goals come back only on a genuinely fresh restore, so an import never
     // silently overwrites goals you have already set.
     let goalsRestored = false;
@@ -1190,7 +1370,8 @@
       saveGoalsObj(payload.goals);
       goalsRestored = true;
     }
-    return { added: added, days: days, goalsRestored: goalsRestored, weightsAdded: weightsAdded };
+    return { added: added, days: days, goalsRestored: goalsRestored,
+             weightsAdded: weightsAdded, waterAdded: waterAdded };
   }
 
   // ================= VIEWS =================
@@ -1202,7 +1383,7 @@
     document.querySelectorAll(".tab").forEach(t =>
       t.classList.toggle("active", t.getAttribute("data-view") === name));
     el("viewSub").textContent = name.charAt(0).toUpperCase() + name.slice(1);
-    if (name === "diary") renderDiary();
+    if (name === "diary"){ renderDiary(); renderWater(); }
     if (name === "progress"){ renderProgress(); renderWeight(); }
     if (name === "settings"){ fillSettings(); renderAccount(); syncStatusIdle(); }
     window.scrollTo(0, 0);
@@ -1341,6 +1522,115 @@
     el("statBest").textContent = best && best.total > 0 ? Math.round(best.total) : "—";
   }
 
+  // ---------- WATER ----------
+  const GLASS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h12l-1.15 16.1A2 2 0 0 1 14.86 21H9.14a2 2 0 0 1-1.99-1.9L6 3Z"/></svg>';
+
+  function waterSettings(){
+    const g = loadGoals();
+    return {
+      goal: Number(g.waterMl) > 0 ? Number(g.waterMl) : 2000,
+      glass: Number(g.glassMl) > 0 ? Number(g.glassMl) : 250,
+      mins: Number(g.reminderMins) || 0,
+    };
+  }
+
+  function renderWater(){
+    const ws = waterSettings();
+    const ml = waterMlFor(keyOf(viewedDate));
+    const target = Math.max(1, Math.round(ws.goal / ws.glass));
+    const done = Math.floor(ml / ws.glass);
+
+    el("waterSub").textContent =
+      Math.min(done, target) + " / " + target + " glasses · " +
+      Math.round(ml) + " / " + Math.round(ws.goal) + " ml";
+
+    let html = "";
+    for (let i = 0; i < target; i++){
+      html += '<span class="glass' + (i < done ? " on" : "") + '">' + GLASS_SVG + "</span>";
+    }
+    if (done > target) html += '<span class="glass extra">+' + (done - target) + "</span>";
+    el("glasses").innerHTML = html;
+    el("waterUndo").disabled = ml <= 0;
+  }
+
+  // ---------- WATER REMINDERS ----------
+  // Honest scope: these fire while the app is open (foreground, or backgrounded via
+  // the service worker if permission was granted). Nothing can wake a closed PWA
+  // without a push server, so we never pretend otherwise.
+  const LASTWATER_KEY = "nutriscan_lastwater_v1";
+  let reminderTimer = null, nudgeHideTimer = null;
+
+  function lastWaterAt(){ return Number(localStorage.getItem(LASTWATER_KEY)) || 0; }
+  function noteWaterMoment(){ localStorage.setItem(LASTWATER_KEY, String(Date.now())); }
+
+  function hideNudge(){
+    el("nudge").hidden = true;
+    clearTimeout(nudgeHideTimer);
+  }
+
+  function showWaterNudge(){
+    const n = el("nudge");
+    n.hidden = false;
+    clearTimeout(nudgeHideTimer);
+    nudgeHideTimer = setTimeout(hideNudge, 25000);
+
+    // Best effort OS notification; only possible while this page/PWA is alive.
+    try{
+      if (window.Notification && Notification.permission === "granted" &&
+          navigator.serviceWorker && navigator.serviceWorker.ready){
+        navigator.serviceWorker.ready.then(function(reg){
+          if (reg && reg.showNotification){
+            reg.showNotification("Time for water", {
+              body: "Tap to log a glass in NutriScan.",
+              icon: "./icon-192.png", badge: "./icon-192.png",
+              tag: "nutriscan-water", renotify: false,
+            });
+          }
+        }).catch(function(){});
+      }
+    }catch(_){}
+  }
+
+  function maybeNudge(){
+    const mins = waterSettings().mins;
+    if (!mins) return;
+    if (!lastWaterAt()){ noteWaterMoment(); return; }   // start the clock on first run
+    if (Date.now() - lastWaterAt() < mins * 60000) return;
+    showWaterNudge();
+    noteWaterMoment();                                  // don't repeat every minute
+  }
+
+  function startReminders(){
+    clearInterval(reminderTimer);
+    hideNudge();
+    if (!waterSettings().mins) return;
+    reminderTimer = setInterval(maybeNudge, 60000);
+    maybeNudge();                                       // catch-up the moment we open
+  }
+
+  function notifyNoteText(){
+    if (!("Notification" in window)){
+      return "This browser can’t show notifications. In-app reminders still work while NutriScan is open.";
+    }
+    const standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+    const base = "Reminders only fire while NutriScan is open — a web app can’t be woken once it’s fully closed. " +
+                 (standalone ? "You’ve installed it to the Home Screen, which gives the best chance of reminders while it’s in the background."
+                             : "Add it to your Home Screen for the best chance of background reminders (on iOS that’s required).");
+    if (Notification.permission === "granted") return "Notifications allowed. " + base;
+    if (Notification.permission === "denied")  return "Notifications blocked in your browser settings. In-app nudges still work. " + base;
+    return base;
+  }
+
+  async function requestNotifyPermission(){
+    if (!("Notification" in window)){ el("notifyNote").textContent = notifyNoteText(); return; }
+    try{
+      await Notification.requestPermission();
+    }catch(_){}
+    el("notifyNote").textContent = notifyNoteText();
+    el("notifyBtn").textContent =
+      (Notification.permission === "granted") ? "Notifications enabled" : "Enable notifications";
+  }
+
   // ---------- WEIGHT ----------
   function renderWeight(){
     const series = weightSeries(30);
@@ -1393,14 +1683,21 @@
     el("goalProtein").value = g.protein != null ? g.protein : "";
     el("goalCarbs").value = g.carbs != null ? g.carbs : "";
     el("goalFat").value = g.fat != null ? g.fat : "";
+    el("goalWater").value = g.waterMl != null ? g.waterMl : "";
+    el("glassMl").value = g.glassMl != null ? g.glassMl : "";
+    el("reminderMins").value = String(Number(g.reminderMins) || 0);
+    el("notifyNote").textContent = notifyNoteText();
+    if ("Notification" in window && Notification.permission === "granted"){
+      el("notifyBtn").textContent = "Notifications enabled";
+    }
   }
   el("saveGoals").addEventListener("click", () => {
-    saveGoalsObj({
-      kcal: numOrNull(el("goalKcal").value) || 0,
-      protein: numOrNull(el("goalProtein").value),
-      carbs: numOrNull(el("goalCarbs").value),
-      fat: numOrNull(el("goalFat").value),
-    });
+    const g = loadGoals();                 // merge: keep water/reminder settings
+    g.kcal = numOrNull(el("goalKcal").value) || 0;
+    g.protein = numOrNull(el("goalProtein").value);
+    g.carbs = numOrNull(el("goalCarbs").value);
+    g.fat = numOrNull(el("goalFat").value);
+    saveGoalsObj(g);
     const b = el("saveGoals");
     b.textContent = "Saved ✓";
     setTimeout(() => { b.textContent = "Save goals"; }, 1400);
@@ -2004,6 +2301,29 @@
         localStorage.setItem(lastPullKey(), down.data[down.data.length - 1].updated_at);
         renderDiary();
       }
+      // Water: isolated so a water_log problem cannot break the food diary sync.
+      try{
+        const wrows = waterOutboxRows(uid);
+        if (wrows.length){
+          console.log("[sync] pushing " + wrows.length + " water day(s)");
+          const wup = await sb.from("water_log").upsert(wrows, { onConflict: "user_id,date" });
+          if (wup.error) throw wup.error;
+          markWaterClean(wrows.map(function(r){ return r.date; }));
+        }
+        const wKey = lastPullKey() + "::water";
+        const wSince = localStorage.getItem(wKey) || "1970-01-01T00:00:00.000Z";
+        const wdown = await sb.from("water_log").select("*")
+          .gt("updated_at", wSince).order("updated_at", { ascending: true });
+        if (wdown.error) throw wdown.error;
+        if (wdown.data && wdown.data.length){
+          mergeRemoteWater(wdown.data);
+          localStorage.setItem(wKey, wdown.data[wdown.data.length - 1].updated_at);
+          renderWater();
+        }
+      }catch(werr){
+        console.warn("[sync] water sync skipped:", (werr && werr.message) || werr);
+      }
+
       syncStatusIdle();
     }catch(err){
       const msg = (err && err.message) || String(err);
@@ -2349,6 +2669,7 @@
           "Restored " + res.added + " entr" + (res.added === 1 ? "y" : "ies") +
           " across " + res.days + " day" + (res.days === 1 ? "" : "s") +
           (res.weightsAdded ? " and " + res.weightsAdded + " weigh-ins" : "") +
+          (res.waterAdded ? " and " + res.waterAdded + " water day(s)" : "") +
           (res.goalsRestored ? ", plus your goals." : ". Existing entries were kept.");
         renderDiary();
       }catch(err){
@@ -2367,6 +2688,38 @@
   });
 
   el("guestBtn").addEventListener("click", () => { setGuest(true); refreshGate(); });
+
+  // ---- water ----
+  el("waterAdd").addEventListener("click", () => {
+    addWater(keyOf(viewedDate), waterSettings().glass);
+    noteWaterMoment();
+    hideNudge();
+    renderWater();
+  });
+  el("waterUndo").addEventListener("click", () => {
+    addWater(keyOf(viewedDate), -waterSettings().glass);
+    renderWater();
+  });
+  el("nudgeLog").addEventListener("click", () => {
+    addWater(todayKey(), waterSettings().glass);
+    noteWaterMoment();
+    hideNudge();
+    renderWater();
+  });
+  el("nudgeClose").addEventListener("click", hideNudge);
+  el("notifyBtn").addEventListener("click", requestNotifyPermission);
+  el("saveWater").addEventListener("click", () => {
+    const g = loadGoals();
+    g.waterMl = numOrNull(el("goalWater").value) || 2000;
+    g.glassMl = numOrNull(el("glassMl").value) || 250;
+    g.reminderMins = Number(el("reminderMins").value) || 0;
+    saveGoalsObj(g);
+    startReminders();
+    renderWater();
+    const b = el("saveWater");
+    b.textContent = "Saved ✓";
+    setTimeout(function(){ b.textContent = "Save water settings"; }, 1400);
+  });
 
   el("scanBtn").addEventListener("click", scanTapped);
   el("searchBtn").addEventListener("click", () => openSearchSheet(pendingMeal || guessMeal()));
@@ -2426,6 +2779,10 @@
   initGoogle();
   bootAuth();
   window.addEventListener("online", syncNow);
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden){ maybeNudge(); syncNow(); }
+  });
+  startReminders();
   showView("diary");
   init();
   </script>

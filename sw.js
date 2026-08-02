@@ -3,7 +3,7 @@
    (e.g. after re-exporting the model) so clients pick up the new files. */
 "use strict";
 
-const CACHE = "nutriscan-v20";
+const CACHE = "nutriscan-v21";
 
 // Files that change whenever the app or model is re-deployed. These are served
 // network-first (cache only as an offline fallback) so a stale copy in an old
@@ -68,6 +68,20 @@ const offlineFallback = (req) =>
     if (req.mode === "navigate") return caches.match("./index.html");
     return Response.error();
   });
+
+// Tapping a water reminder focuses the existing window, or opens the app if it
+// isn't running. Purely a click handler — it does not and cannot schedule
+// anything; nothing wakes a closed PWA without a push server.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows){
+      if ("focus" in client) return client.focus();
+    }
+    if (self.clients.openWindow) return self.clients.openWindow("./");
+  })());
+});
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
