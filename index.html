@@ -1022,6 +1022,9 @@
       const arr = log[dateKey];
       const j = arr.findIndex(function(x){ return x.id === incoming.id; });
       if (j < 0){
+        // A tombstone with nothing to delete locally is not worth storing —
+        // otherwise every pull re-adds dead rows that reads filter out anyway.
+        if (incoming.deleted){ kept++; continue; }
         arr.push(incoming);
         applied++;
       } else if (arr[j].dirty && arr[j].updatedAt > incoming.updatedAt){
